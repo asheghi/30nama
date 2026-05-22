@@ -1,5 +1,5 @@
 import { chromium, type Browser } from "playwright";
-import type { LoginResult } from "./api.ts";
+import type { LoginResult } from "@30nama/api";
 
 const LOGIN_URL = "https://30nama.com/login";
 const LOGIN_API_PATH = "/api/v1/action/loginV2";

@@ -1,4 +1,9 @@
 node_modules/
+.turbo/
+.output/
+.tanstack/
+dist/
 *.log
 .env
+.env.local
 details-page.html

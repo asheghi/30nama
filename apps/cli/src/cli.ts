@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 import { Command } from "commander";
 import {
+  ApiClient,
+  ApiError,
   extractId,
   getDownloads,
   type DownloadGroup,
   type LoginResult,
-} from "./api.ts";
-import { ApiError } from "./client.ts";
+} from "@30nama/api";
 import { interactiveLogin } from "./login-browser.ts";
 import {
   clearSession,
@@ -62,7 +63,7 @@ program
   .action(async () => {
     const s = await loadSession();
     if (!s) {
-      console.log("No session. Run `30nama login --token <token>`.");
+      console.log("No session. Run `30nama login`.");
       process.exit(1);
     }
     console.log(JSON.stringify(s, null, 2));
@@ -88,10 +89,11 @@ program
   .option("--season <n>", "filter to a single season number")
   .action(async (urlOrId: string, opts) => {
     const session = await loadSession();
-    if (!session) die("Not logged in. Run `30nama login --token <token>`.");
+    if (!session) die("Not logged in. Run `30nama login`.");
 
     const id = extractId(urlOrId);
-    const result = await getDownloads(id, session.usertoken);
+    const client = new ApiClient({ token: session.usertoken });
+    const result = await getDownloads(client, id);
 
     if (opts.json) {
       console.log(JSON.stringify(result, null, 2));

@@ -1,17 +1,4 @@
-import { apiPost } from "./client.ts";
-
-export interface LoginResult {
-  usertoken: string;
-  userid: number;
-  allowed_to_download: boolean;
-  allowed_to_stream: boolean;
-  usertype: string;
-  expire: string;
-  useremail: string;
-  username: string;
-  gavatar: string;
-  avatar: string;
-}
+import type { ApiClient } from "../client.ts";
 
 export interface DownloadLink {
   id: string;
@@ -48,32 +35,17 @@ export interface DownloadsResult {
   is_series: boolean;
 }
 
-export function login(
-  email: string,
-  password: string,
-  recaptchaResponse: string,
-): Promise<LoginResult> {
-  return apiPost<LoginResult>("/action/loginV2", {
-    body: {
-      userlogin: email,
-      userpassword: password,
-      "g-recaptcha-response": recaptchaResponse,
-    },
-  });
-}
-
 export function getDownloads(
+  client: ApiClient,
   id: string | number,
-  token: string,
   freeDownload = false,
 ): Promise<DownloadsResult> {
-  return apiPost<DownloadsResult>(`/action/download/id/${id}`, {
-    token,
-    body: { freeDownload },
+  return client.post<DownloadsResult>(`/action/download/id/${id}`, {
+    formBody: { freeDownload },
   });
 }
 
-const ID_RE = /\/(?:movie|series)\/(\d+)\b/;
+const ID_RE = /\/(?:movie|series|anime)\/(\d+)\b/;
 
 export function extractId(input: string): string {
   if (/^\d+$/.test(input)) return input;
