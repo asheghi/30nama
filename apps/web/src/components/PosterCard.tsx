@@ -1,4 +1,5 @@
 import type { Post } from "@30nama/api";
+import { Link } from "@tanstack/react-router";
 
 export function PosterCard({ post }: { post: Post }) {
   const poster =
@@ -10,8 +11,9 @@ export function PosterCard({ post }: { post: Post }) {
   const seriesBadge = post.is_series ? "Series" : "Movie";
 
   return (
-    <a
-      href={`/title/${post.id}`}
+    <Link
+      to="/title/$id"
+      params={{ id: String(post.id) }}
       className="group block overflow-hidden rounded-md bg-card transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="relative aspect-[2/3] bg-muted">
@@ -41,7 +43,7 @@ export function PosterCard({ post }: { post: Post }) {
           )}
         </div>
       </div>
-    </a>
+    </Link>
   );
 }
 
