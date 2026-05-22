@@ -50,14 +50,28 @@ export function PosterCard({ post }: { post: Post }) {
 export function PosterRow({
   title,
   posts,
+  seeMoreCat,
 }: {
   title: string;
   posts: Post[];
+  seeMoreCat?: "movie" | "series" | "anime";
 }) {
   if (!posts.length) return null;
   return (
     <section className="space-y-3">
-      <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{title}</h2>
+        {seeMoreCat && (
+          <Link
+            to="/category/$cat"
+            params={{ cat: seeMoreCat }}
+            search={{}}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            See all →
+          </Link>
+        )}
+      </div>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
         {posts.map((p) => (
           <PosterCard key={`${title}-${p.id}`} post={p} />

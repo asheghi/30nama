@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
   getSingle,
   getDownloads,
@@ -8,6 +8,7 @@ import {
 } from "@30nama/api";
 import { createClient, getStoredToken } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { SiteHeader } from "@/components/SiteHeader";
 
 export const Route = createFileRoute("/title/$id")({
   beforeLoad: () => {
@@ -49,16 +50,7 @@ function TitlePage() {
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-20 flex items-center justify-between border-b border-border bg-background/80 px-6 py-3 backdrop-blur">
-        <Link to="/" className="text-xl font-bold tracking-tight">
-          30nama
-        </Link>
-        <Link to="/">
-          <Button variant="ghost" size="sm">
-            Home
-          </Button>
-        </Link>
-      </header>
+      <SiteHeader />
 
       {loading && (
         <div className="p-8 text-muted-foreground">Loading…</div>

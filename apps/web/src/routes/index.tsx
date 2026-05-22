@@ -4,6 +4,7 @@ import { getMainV2, type MainV2Result } from "@30nama/api";
 import { createClient, getStoredToken, setStoredToken } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { PosterRow } from "@/components/PosterCard";
+import { SiteHeader } from "@/components/SiteHeader";
 
 export const Route = createFileRoute("/")({ component: Home });
 
@@ -31,20 +32,12 @@ function Home() {
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-background/80 px-6 py-3 backdrop-blur">
-        <h1 className="text-xl font-bold tracking-tight">30nama</h1>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setStoredToken(null);
-            setToken(null);
-            setData(null);
-          }}
-        >
-          Sign out
-        </Button>
-      </header>
+      <SiteHeader
+        onSignOut={() => {
+          setToken(null);
+          setData(null);
+        }}
+      />
 
       <main className="mx-auto max-w-7xl space-y-10 px-6 py-8">
         {loading && <p className="text-muted-foreground">Loading…</p>}
@@ -55,13 +48,25 @@ function Home() {
         )}
         {data && (
           <>
-            <PosterRow title="Hero" posts={data.hero_section.posts} />
+            <PosterRow title="Featured" posts={data.hero_section.posts} />
             <PosterRow title="Top 10" posts={data.top10} />
             <PosterRow title="New Releases" posts={data.new_releases.posts} />
             <PosterRow title="Suggested" posts={data.suggested.posts} />
-            <PosterRow title="Movies" posts={data.movies.posts} />
-            <PosterRow title="Series" posts={data.series.posts} />
-            <PosterRow title="Anime" posts={data.anime.posts} />
+            <PosterRow
+              title="Movies"
+              posts={data.movies.posts}
+              seeMoreCat="movie"
+            />
+            <PosterRow
+              title="Series"
+              posts={data.series.posts}
+              seeMoreCat="series"
+            />
+            <PosterRow
+              title="Anime"
+              posts={data.anime.posts}
+              seeMoreCat="anime"
+            />
           </>
         )}
       </main>
