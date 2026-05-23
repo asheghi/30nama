@@ -13,6 +13,7 @@ import { Route as SearchRouteImport } from './routes/search'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TitleIdRouteImport } from './routes/title.$id'
+import { Route as PlayIdRouteImport } from './routes/play.$id'
 import { Route as CategoryCatRouteImport } from './routes/category.$cat'
 
 const SearchRoute = SearchRouteImport.update({
@@ -35,6 +36,11 @@ const TitleIdRoute = TitleIdRouteImport.update({
   path: '/title/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PlayIdRoute = PlayIdRouteImport.update({
+  id: '/play/$id',
+  path: '/play/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CategoryCatRoute = CategoryCatRouteImport.update({
   id: '/category/$cat',
   path: '/category/$cat',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/search': typeof SearchRoute
   '/category/$cat': typeof CategoryCatRoute
+  '/play/$id': typeof PlayIdRoute
   '/title/$id': typeof TitleIdRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/search': typeof SearchRoute
   '/category/$cat': typeof CategoryCatRoute
+  '/play/$id': typeof PlayIdRoute
   '/title/$id': typeof TitleIdRoute
 }
 export interface FileRoutesById {
@@ -61,14 +69,28 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/search': typeof SearchRoute
   '/category/$cat': typeof CategoryCatRoute
+  '/play/$id': typeof PlayIdRoute
   '/title/$id': typeof TitleIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/search' | '/category/$cat' | '/title/$id'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/search'
+    | '/category/$cat'
+    | '/play/$id'
+    | '/title/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/search' | '/category/$cat' | '/title/$id'
-  id: '__root__' | '/' | '/login' | '/search' | '/category/$cat' | '/title/$id'
+  to: '/' | '/login' | '/search' | '/category/$cat' | '/play/$id' | '/title/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/search'
+    | '/category/$cat'
+    | '/play/$id'
+    | '/title/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,6 +98,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SearchRoute: typeof SearchRoute
   CategoryCatRoute: typeof CategoryCatRoute
+  PlayIdRoute: typeof PlayIdRoute
   TitleIdRoute: typeof TitleIdRoute
 }
 
@@ -109,6 +132,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TitleIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/play/$id': {
+      id: '/play/$id'
+      path: '/play/$id'
+      fullPath: '/play/$id'
+      preLoaderRoute: typeof PlayIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/category/$cat': {
       id: '/category/$cat'
       path: '/category/$cat'
@@ -124,6 +154,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SearchRoute: SearchRoute,
   CategoryCatRoute: CategoryCatRoute,
+  PlayIdRoute: PlayIdRoute,
   TitleIdRoute: TitleIdRoute,
 }
 export const routeTree = rootRouteImport
