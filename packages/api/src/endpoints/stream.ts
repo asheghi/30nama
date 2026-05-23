@@ -103,6 +103,144 @@ export interface StreamResult {
   vast2: string;
 }
 
+// The raw shape hana-api returns for `action/stream`. It's a flat array of
+// episodes (`hls[]`) with season/episode info per entry — the public
+// `StreamResult` shape above is the season-grouped view the player code
+// expects, and `adaptStream` below maps between them.
+interface RawStreamM3u8 {
+  default: string;
+  "6ch": string;
+  "2ch": string;
+  label: string;
+}
+
+interface RawStreamHls {
+  info: {
+    file_id: number;
+    season?: number;
+    episode?: string;
+    episode_number?: number;
+    episode_name?: string;
+  };
+  file: {
+    m3u8: RawStreamM3u8[];
+    subtitle?: { en?: string; fa?: string };
+  };
+  options: {
+    intro_start?: string;
+    intro_end?: string;
+    previously_start?: string;
+    previously_end?: string;
+    end?: string;
+    token: string;
+  };
+}
+
+interface RawStreamData {
+  info: { post_id: number; title: { english: string; local?: string } };
+  image: { cover?: { webp: string; jpg: string } };
+  continue_watching?: {
+    post_id: number;
+    file_id: number;
+    time: number;
+    display_time: string;
+    progress: number;
+  };
+  vast2: string;
+  hls: RawStreamHls[];
+}
+
+function adaptStream(raw: RawStreamData): StreamResult {
+  const list: Record<string, StreamEpisode[]> = {};
+  for (const h of raw.hls ?? []) {
+    const season = String(h.info.season ?? 1);
+    const episode: StreamEpisode = {
+      data: {
+        id: String(h.info.file_id),
+        season,
+        number: String(h.info.episode_number ?? h.info.episode ?? ""),
+        episode: String(h.info.episode ?? h.info.episode_number ?? ""),
+        title: h.info.episode_name ?? "",
+      },
+      file: {
+        url: h.file.m3u8?.[0]?.default ?? "",
+        ip: h.file.m3u8?.[0]?.default ?? "",
+        source: (h.file.m3u8 ?? []).map((m) => ({
+          label: m.label,
+          auto: m.default,
+          "6ch": m["6ch"],
+          "2ch": m["2ch"],
+        })),
+      },
+      subtitle: {
+        fa: h.file.subtitle?.fa ?? "",
+        en: h.file.subtitle?.en ?? "",
+      },
+      options: {
+        intro_start: h.options.intro_start ?? "",
+        intro_end: h.options.intro_end ?? "",
+        previously_start: h.options.previously_start ?? null,
+        previously_end: h.options.previously_end ?? null,
+        end: h.options.end ?? "",
+        key: h.options.token,
+      },
+    };
+    (list[season] ??= []).push(episode);
+  }
+
+  // `continue_watching` is post-level — to fill the season/episode/title
+  // fields the player expects on `watched`, look up the matching hls entry.
+  let watched: StreamWatched = {
+    season: "",
+    episode: "",
+    title: "",
+    number: "",
+    id: 0,
+    time: "0",
+    progress: 0,
+  };
+  if (raw.continue_watching) {
+    const cw = raw.continue_watching;
+    const match = raw.hls?.find((h) => h.info.file_id === cw.file_id);
+    watched = {
+      season: String(match?.info.season ?? ""),
+      episode: String(match?.info.episode ?? ""),
+      number: String(match?.info.episode_number ?? ""),
+      title: match?.info.episode_name ?? "",
+      id: cw.file_id,
+      time: String(cw.time),
+      progress: cw.progress,
+    };
+  }
+
+  const coverWebp = raw.image.cover?.webp ?? "";
+  const coverJpg = raw.image.cover?.jpg ?? "";
+
+  return {
+    data: { post_id: raw.info.post_id, title: raw.info.title.english },
+    list,
+    watched,
+    image: {
+      cover: coverJpg,
+      cover_webp: coverWebp,
+      // Hana-api doesn't return poster variants on the stream payload;
+      // the title/single response already carries posters, so the player
+      // never needs them. Leave the slots empty rather than fabricating.
+      poster: {
+        big: "",
+        big_webp: "",
+        large: "",
+        large_webp: "",
+        medium: "",
+        medium_webp: "",
+        small: "",
+        small_webp: "",
+      },
+    },
+    vast2: raw.vast2,
+  };
+}
+
 /**
  * Fetch the HLS stream metadata for a title. Returns season/episode tree,
  * per-episode quality + audio sources, subtitles, intro/end markers, and
@@ -112,16 +250,18 @@ export interface StreamResult {
  * cache them — request fresh on every play session.
  *
  * The action is `stream` with `post_id` in the body (matching the official
- * 30nama-sdk). The path-style `stream/id/{id}` is what interface.30nama.com
- * accepts — hana-api returns POST_NOT_FOUND for that variant.
+ * 30nama-sdk). Hana-api returns a flat `hls[]` array; we group it by
+ * season here so the rest of the app can stay shaped like the old
+ * interface.30nama.com payload.
  */
-export function getStream(
+export async function getStream(
   client: ApiClient,
   postId: number | string,
   freeStream = false,
 ): Promise<StreamResult> {
-  return client.call<StreamResult>("stream", {
+  const raw = await client.call<RawStreamData>("stream", {
     post_id: postId,
     free_stream: freeStream,
   });
+  return adaptStream(raw);
 }
