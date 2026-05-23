@@ -110,10 +110,18 @@ export interface StreamResult {
  *
  * URLs in `file.url` / `file.source[*]` are IP-signed and short-TTL. Never
  * cache them — request fresh on every play session.
+ *
+ * The action is `stream` with `post_id` in the body (matching the official
+ * 30nama-sdk). The path-style `stream/id/{id}` is what interface.30nama.com
+ * accepts — hana-api returns POST_NOT_FOUND for that variant.
  */
 export function getStream(
   client: ApiClient,
   postId: number | string,
+  freeStream = false,
 ): Promise<StreamResult> {
-  return client.call<StreamResult>(`stream/id/${postId}`, {});
+  return client.call<StreamResult>("stream", {
+    post_id: postId,
+    free_stream: freeStream,
+  });
 }
