@@ -18,6 +18,7 @@ export const queryKeys = {
   home: () => ["home"] as const,
   single: (id: string) => ["single", id] as const,
   download: (id: string) => ["download", id] as const,
+  stream: (id: string) => ["stream", id] as const,
   archive: (
     cat: string,
     genre: string,

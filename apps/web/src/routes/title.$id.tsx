@@ -4,10 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getSingle,
   getDownload,
+  getStream,
   type Single,
   type Download as DownloadItem,
 } from "@30nama/api";
 import { Check, Copy, Download, Play } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import { createClient, getStoredToken } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
@@ -79,6 +81,17 @@ function TitlePage() {
     retry: false,
   });
 
+  // Stream availability check — same caching rules as download (signed,
+  // short-lived URLs). The query result drives whether the Watch button
+  // is rendered; errors silently hide it rather than surfacing.
+  const streamQuery = useQuery({
+    queryKey: queryKeys.stream(id),
+    queryFn: () => getStream(createClient(), id),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  });
+
   const loading = singleQuery.isLoading;
   const error = singleQuery.error;
 
@@ -86,6 +99,9 @@ function TitlePage() {
   const detail = singleQuery.data;
   const groups = flattenDownloads(downloadsQuery.data?.download);
   const isSeries = detail?.options.is_series ?? false;
+  const hasStream =
+    !!streamQuery.data &&
+    Object.values(streamQuery.data.list).some((eps) => eps.length > 0);
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
@@ -97,7 +113,15 @@ function TitlePage() {
           {error.message}
         </div>
       )}
-      {detail && <Detail detail={detail} groups={groups} isSeries={isSeries} />}
+      {detail && (
+        <Detail
+          detail={detail}
+          groups={groups}
+          isSeries={isSeries}
+          hasStream={hasStream}
+          titleId={id}
+        />
+      )}
     </div>
   );
 }
@@ -106,10 +130,14 @@ function Detail({
   detail,
   groups,
   isSeries,
+  hasStream,
+  titleId,
 }: {
   detail: Single;
   groups: DownloadItem[];
   isSeries: boolean;
+  hasStream: boolean;
+  titleId: string;
 }) {
   const cover = detail.image.cover?.webp ?? detail.image.cover?.jpg ?? null;
   const poster =
@@ -193,6 +221,17 @@ function Detail({
               <p className="text-sm leading-relaxed text-foreground/90">
                 {detail.plot.english}
               </p>
+            )}
+
+            {hasStream && (
+              <div className="pt-2">
+                <Button asChild size="lg" className="gap-2">
+                  <Link to="/play/$id" params={{ id: titleId }}>
+                    <Play className="size-4" />
+                    Watch
+                  </Link>
+                </Button>
+              </div>
             )}
 
             {detail.options.coming_soon && (
