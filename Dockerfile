@@ -68,8 +68,8 @@ USER nodeapp
 
 EXPOSE 3000
 
-# Lightweight liveness probe: curl is present in node:22-slim.
-# Hits the SSR root and expects any HTTP response within 5 s.
+# Lightweight liveness probe using Node's built-in fetch (no extra binaries).
+# Hits the SSR root and expects a 2xx response within 5 s.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD node -e "fetch('http://localhost:' + (process.env.PORT||3000) + '/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
 
