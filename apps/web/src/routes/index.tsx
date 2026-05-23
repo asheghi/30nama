@@ -1,56 +1,70 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { getHome, type HomeData } from "@30nama/api";
+import { useQuery } from "@tanstack/react-query";
+import { getHome } from "@30nama/api";
 import { createClient, getStoredToken } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
 import { PosterRow } from "@/components/PosterCard";
 import { SiteHeader } from "@/components/SiteHeader";
 
-export const Route = createFileRoute("/")({ component: Home });
+const HOME_STALE_TIME = 10 * 60 * 1000; // 10 min
+
+export const Route = createFileRoute("/")({
+  loader: async ({ context }) => {
+    // Only prefetch on the server (or first browser hit when we have a
+    // token). `getStoredToken` returns null during SSR, so the prefetch is
+    // effectively a no-op there — the browser will fire it once hydrated.
+    const token = getStoredToken();
+    if (!token) return;
+    await context.queryClient.prefetchQuery({
+      queryKey: queryKeys.home(),
+      queryFn: () => getHome(createClient(token)),
+      staleTime: HOME_STALE_TIME,
+    });
+  },
+  component: Home,
+});
 
 function Home() {
+  // Track the token in state so a sign-out (which now lives in SiteHeader
+  // and just navigates away after clearing localStorage) and a fresh login
+  // both surface here. `ready` gates the first paint until the localStorage
+  // check has actually run on the client.
   const [token, setToken] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const [data, setData] = useState<HomeData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setToken(getStoredToken());
     setReady(true);
   }, []);
 
-  useEffect(() => {
-    if (!token) return;
-    setLoading(true);
-    setError(null);
-    getHome(createClient(token))
-      .then(setData)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [token]);
+  const query = useQuery({
+    queryKey: queryKeys.home(),
+    queryFn: () => getHome(createClient(token)),
+    enabled: Boolean(token),
+    staleTime: HOME_STALE_TIME,
+  });
 
-  // Render nothing until we've actually checked localStorage — otherwise
-  // SSR and the first client render flash <SignInPrompt> before the effect.
   if (!ready) {
     return <div className="dark min-h-screen bg-background" />;
   }
   if (!token) return <SignInPrompt />;
 
+  const { data, error, isLoading } = query;
+
   return (
     <div className="dark min-h-screen bg-background text-foreground">
-      <SiteHeader
-        onSignOut={() => {
-          setToken(null);
-          setData(null);
-        }}
-      />
+      {/* SiteHeader handles the actual sign-out work (clearing token,
+          QueryClient, and the persisted localStorage snapshot) and then
+          navigates back to "/", which remounts this component. */}
+      <SiteHeader onSignOut={() => setToken(null)} />
 
       <main className="mx-auto max-w-7xl space-y-10 px-6 py-8">
-        {loading && <p className="text-muted-foreground">Loading…</p>}
+        {isLoading && <p className="text-muted-foreground">Loading…</p>}
         {error && (
           <div className="rounded border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-            {error}
+            {error.message}
           </div>
         )}
         {data && (
