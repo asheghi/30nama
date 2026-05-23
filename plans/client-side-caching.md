@@ -1,6 +1,6 @@
 # Client-side caching layer via TanStack Query
 
-**Status:** in-progress
+**Status:** done (merged into main)
 **Created:** 2026-05-23
 **Worktree:** /home/bahman/github/30nama/.claude/worktrees/agent-a5e221ffb5eaedda4 (branch: worktree-agent-a5e221ffb5eaedda4)
 **Integration target:** main
@@ -37,7 +37,7 @@ Wire TanStack Query into the web app so home/single/list/search/user calls are d
 - [x] T9 — `routes/login.tsx`: initial `qrLoginCode` fetch via useQuery (staleTime:0, gcTime:0); poll loop kept as effect (not a cacheable read).
 - [x] T10 — `SiteHeader` sign-out clears queryClient + removes `localStorage["30nama:query-cache"]`.
 - [x] T11 — Gate passed: `pnpm --filter @30nama/web typecheck` and `pnpm typecheck` both clean.
-- [ ] T12 — Commit, merge into main, mark plan done.
+- [x] T12 — Commit, merge into main, mark plan done.
 
 ## Decisions
 
