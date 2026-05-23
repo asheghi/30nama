@@ -1,14 +1,16 @@
-import type { Post } from "@30nama/api";
+import type { Title } from "@30nama/api";
 import { Link } from "@tanstack/react-router";
 
-export function PosterCard({ post }: { post: Post }) {
+export function PosterCard({ post }: { post: Title }) {
   const poster =
-    post.image.poster.medium_webp ||
-    post.image.poster.medium ||
-    post.image.poster.small;
+    post.image.poster.webp?.medium ||
+    post.image.poster.jpg?.medium ||
+    post.image.poster.preview;
 
-  const score = post["30nama_score"];
-  const seriesBadge = post.is_series ? "Series" : "Movie";
+  const score = post.score?.["30nama"]?.score ?? 0;
+  const isSeries = post.options.is_series;
+  const seriesBadge = isSeries ? "Series" : "Movie";
+  const displayTitle = post.title.english || post.title.local || "";
 
   return (
     <Link
@@ -19,7 +21,7 @@ export function PosterCard({ post }: { post: Post }) {
       <div className="relative aspect-[2/3] bg-muted">
         <img
           src={poster}
-          alt={post.title}
+          alt={displayTitle}
           loading="lazy"
           className="h-full w-full object-cover"
         />
@@ -30,8 +32,8 @@ export function PosterCard({ post }: { post: Post }) {
         )}
       </div>
       <div className="p-2">
-        <div className="truncate text-sm font-medium" title={post.title}>
-          {post.title}
+        <div className="truncate text-sm font-medium" title={displayTitle}>
+          {displayTitle}
         </div>
         <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
           <span>{seriesBadge}</span>
@@ -53,7 +55,7 @@ export function PosterRow({
   seeMoreCat,
 }: {
   title: string;
-  posts: Post[];
+  posts: Title[];
   seeMoreCat?: "movie" | "series" | "anime";
 }) {
   if (!posts.length) return null;

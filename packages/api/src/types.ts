@@ -1,80 +1,93 @@
-export type TitleType = "movie" | "series" | "anime";
+// Shared types derived from the hana-api response shapes (matches the
+// official 30nama-sdk's `dist/entities/*` definitions).
+
+export type TitleType = "series" | "movie" | "anime";
 
 export interface Genre {
   name: string;
   slug: string;
 }
 
-export interface PosterSet {
-  big: string;
-  big_webp: string;
-  large: string;
-  large_webp: string;
-  medium: string;
-  medium_webp: string;
-  small: string;
-  small_webp: string;
+export interface PosterImages {
+  preview: string;
+  webp: { small: string; medium: string; large: string; big: string };
+  jpg: { small: string; medium: string; large: string; big: string };
 }
 
-export interface PostImage {
-  cover: string | false;
-  cover_webp: string | false;
-  poster: PosterSet;
+export interface CoverImages {
+  webp: string;
+  jpg: string;
 }
 
-export interface Airstatus {
-  status: string | null;
-  data: string | null;
+export interface TitleImage {
+  poster: PosterImages;
+  cover?: CoverImages;
 }
 
-export interface NextEpisode {
-  caption: string | null;
-  date: string | null;
-}
-
-export interface Seo {
-  title: string;
-  description: string | null;
-  alt: string;
-}
-
-export interface Post {
+export interface Title {
   id: number;
-  title_type: TitleType;
-  stream: boolean;
-  is_series: boolean;
-  coming_soon: boolean;
-  free_stream: boolean;
-  free_download: boolean;
-  persian_subtitle: boolean;
-  imdb_250: string | null;
-  title: string;
-  persian_title: string;
-  budget: string;
-  persian_plot: string;
-  english_plot: string;
-  imdb_id: string;
-  imdb_score: string;
-  imdb_votes: string;
-  "30nama_score": number;
-  "30nama_votes": string;
-  myanimelist: string | null;
-  myanimelist_score: number | null;
-  myanimelist_votes: string | null;
-  mydramalist: string | null;
-  mydramalist_score: string | null;
-  mydramalist_votes: string | null;
-  seo: Seo;
-  image: PostImage;
+  post_type: "title";
+  options: {
+    title_type: TitleType;
+    stream: boolean;
+    is_series: boolean;
+    persian_subtitle: boolean;
+    exclusive_subtitle: boolean;
+    coming_soon: boolean;
+    free_download: boolean;
+    free_stream: boolean;
+  };
+  info: {
+    seasons: number;
+    year: number;
+    year_end?: number;
+    budget?: string;
+    age: string;
+    time: {
+      default: number;
+      others?: { name: string; time: number };
+    };
+  };
+  title: { english: string; local?: string };
+  plot: { english: string; local: string };
+  image: TitleImage;
   genre: Genre[];
-  airstatus: Airstatus;
-  nextepisode: NextEpisode;
+  score?: {
+    "30nama"?: { score: number; votes: number; top_100?: string };
+    imdb?: {
+      link: string;
+      score: number;
+      votes: number;
+      top_250?: string;
+    };
+    rottentomatoes?: { link: string; score: number };
+    metacritic?: { link: string; score: number };
+    mydramalist?: { link: string; score: number; votes: number };
+    myanimelist?: { link: string; score: number; votes: number };
+  };
+  air: {
+    air_status: string;
+    air_data?: string;
+    next_episode_caption: string;
+    next_episode_date: { g: string; j: string };
+  };
+  seo?: Record<string, unknown>;
+}
+
+export interface ArchiveSlug {
+  id: number;
+  name: string;
+  slug: string;
+  count: number;
+  image: {
+    webp: { thumb: string; full: string };
+    jpg: { thumb: string; full: string };
+  };
 }
 
 export interface Page<T> {
+  posts: T[];
   page: number;
   pages: number;
-  posts: T[];
-  cache?: boolean;
-  cache_key?: string;
+  total: number;
 }

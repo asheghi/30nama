@@ -1,15 +1,26 @@
 import type { ApiClient } from "../client.ts";
 
-// Permissive shape — the real response (~1.2KB) carries the signed-in user's
-// profile, subscription, and avatar. Tighten once a real response is captured.
 export interface User {
-  id?: number;
-  username?: string;
-  email?: string;
-  avatar?: string | null;
-  [key: string]: unknown;
+  user_session: string;
+  user_id: number;
+  user_name: string;
+  user_type: string;
+  user_allowed_to_download: boolean;
+  user_allowed_to_stream: boolean;
+  user_email?: string;
+  user_mobile?: string;
+  user_expire?: { days: number; g: string; j: string };
+  user_avatar: string;
+  is_new_user: boolean;
+  is_abroad_user: boolean;
+  is_admin: boolean;
 }
 
+/** Returns the current session's user; throws on invalid/expired token. */
 export function getUser(client: ApiClient): Promise<User> {
-  return client.post<User>("/action/user", { jsonBody: {} });
+  return client.call<User>("user");
+}
+
+export function logout(client: ApiClient): Promise<null> {
+  return client.call<null>("logout");
 }

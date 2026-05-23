@@ -12,8 +12,7 @@
   },
   "dependencies": {
     "@30nama/api": "workspace:*",
-    "commander": "^12.1.0",
-    "playwright": "^1.60.0"
+    "commander": "^12.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

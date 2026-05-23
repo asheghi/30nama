@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
   getSingle,
-  getDownloads,
-  type TitleDetail,
-  type DownloadGroup,
+  getDownload,
+  type Single,
+  type Download as DownloadItem,
 } from "@30nama/api";
 import { Check, Copy, Download, Play } from "lucide-react";
 import { createClient, getStoredToken } from "@/lib/api";
@@ -21,9 +21,18 @@ export const Route = createFileRoute("/title/$id")({
 });
 
 interface TitleData {
-  detail: TitleDetail;
-  groups: DownloadGroup[];
+  detail: Single;
+  groups: DownloadItem[];
   isSeries: boolean;
+}
+
+/** Flattens the API's `download` payload (either an array or a grouped map). */
+function flattenDownloads(
+  download: Record<string, DownloadItem[]> | DownloadItem[] | undefined,
+): DownloadItem[] {
+  if (!download) return [];
+  if (Array.isArray(download)) return download;
+  return Object.values(download).flat();
 }
 
 function TitlePage() {
@@ -37,12 +46,15 @@ function TitlePage() {
     setError(null);
     setData(null);
     const client = createClient();
-    Promise.all([getSingle(client, id), getDownloads(client, id).catch(() => null)])
+    Promise.all([
+      getSingle(client, id),
+      getDownload(client, id).catch(() => null),
+    ])
       .then(([detail, downloads]) => {
         setData({
           detail,
-          groups: downloads?.download ?? [],
-          isSeries: detail.is_series || (downloads?.is_series ?? false),
+          groups: flattenDownloads(downloads?.download),
+          isSeries: detail.options.is_series,
         });
       })
       .catch((e: Error) => setError(e.message))
@@ -53,9 +65,7 @@ function TitlePage() {
     <div className="dark min-h-screen bg-background text-foreground">
       <SiteHeader />
 
-      {loading && (
-        <div className="p-8 text-muted-foreground">Loading…</div>
-      )}
+      {loading && <div className="p-8 text-muted-foreground">Loading…</div>}
       {error && (
         <div className="m-6 rounded border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
           {error}
@@ -68,11 +78,18 @@ function TitlePage() {
 
 function Detail({ data }: { data: TitleData }) {
   const { detail, groups, isSeries } = data;
-  const cover = detail.image.cover_webp || detail.image.cover || null;
+  const cover = detail.image.cover?.webp ?? detail.image.cover?.jpg ?? null;
   const poster =
-    detail.image.poster.big_webp ||
-    detail.image.poster.big ||
-    detail.image.poster.medium;
+    detail.image.poster.webp?.big ||
+    detail.image.poster.jpg?.big ||
+    detail.image.poster.preview;
+
+  const displayTitle = detail.title.english || detail.title.local || "";
+  const year = detail.info.year;
+  const yearEnd = detail.info.year_end;
+  const minutes = detail.info.time?.default;
+  const imdb = detail.score?.imdb;
+  const localScore = detail.score?.["30nama"]?.score;
 
   return (
     <>
@@ -91,24 +108,24 @@ function Detail({ data }: { data: TitleData }) {
         <div className="flex flex-col gap-6 sm:flex-row">
           <img
             src={poster}
-            alt={detail.title}
+            alt={displayTitle}
             className="aspect-[2/3] w-40 shrink-0 rounded-lg border border-border object-cover shadow-xl sm:w-48"
           />
           <div className="flex-1 space-y-3">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">
-                {detail.title}
+                {displayTitle}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                {detail.year}
-                {detail.year_end ? `–${detail.year_end}` : ""}
-                {detail.time && ` · ${detail.time}`}
+                {year}
+                {yearEnd ? `–${yearEnd}` : ""}
+                {minutes ? ` · ${minutes} min` : ""}
                 {isSeries ? " · Series" : " · Movie"}
               </p>
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {detail.genre_full.map((g) => (
+              {detail.genre.map((g) => (
                 <span
                   key={g.slug}
                   className="rounded-full border border-border bg-secondary px-3 py-0.5 text-xs"
@@ -119,35 +136,33 @@ function Detail({ data }: { data: TitleData }) {
             </div>
 
             <div className="flex gap-6 text-sm">
-              {detail.imdb_score && (
+              {imdb && (
                 <span>
                   <span className="text-muted-foreground">IMDB </span>
-                  <span className="font-semibold">{detail.imdb_score}</span>
-                  {detail.imdb_votes && (
+                  <span className="font-semibold">{imdb.score}</span>
+                  {imdb.votes > 0 && (
                     <span className="text-muted-foreground">
                       {" "}
-                      ({detail.imdb_votes})
+                      ({imdb.votes.toLocaleString()})
                     </span>
                   )}
                 </span>
               )}
-              {detail["30nama_score"] > 0 && (
+              {localScore !== undefined && localScore > 0 && (
                 <span>
                   <span className="text-muted-foreground">30nama </span>
-                  <span className="font-semibold">
-                    {detail["30nama_score"]}
-                  </span>
+                  <span className="font-semibold">{localScore}</span>
                 </span>
               )}
             </div>
 
-            {detail.english_plot && (
+            {detail.plot.english && (
               <p className="text-sm leading-relaxed text-foreground/90">
-                {detail.english_plot}
+                {detail.plot.english}
               </p>
             )}
 
-            {detail.coming_soon && (
+            {detail.options.coming_soon && (
               <div className="rounded border border-yellow-700/40 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-300">
                 Coming soon — no downloads available yet.
               </div>
@@ -165,7 +180,7 @@ function DownloadsSection({
   groups,
   isSeries,
 }: {
-  groups: DownloadGroup[];
+  groups: DownloadItem[];
   isSeries: boolean;
 }) {
   if (groups.length === 0) {
@@ -200,29 +215,33 @@ function DownloadsSection({
   );
 }
 
-function MovieGroupRow({ group }: { group: DownloadGroup }) {
+function MovieGroupRow({ group }: { group: DownloadItem }) {
   const link = group.link[0];
-  if (!link) return null;
+  const url = link?.dl ?? group.dl;
+  if (!url) return null;
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3 hover:bg-accent/40">
       <div className="min-w-0">
         <div className="font-medium">{group.quality.trim()}</div>
         <div className="text-xs text-muted-foreground">
-          {[group.encoder, group.size, group.tags].filter(Boolean).join(" · ")}
+          {[group.encoder, group.size, group.tags.join(" / ")]
+            .filter(Boolean)
+            .join(" · ")}
         </div>
       </div>
-      <DownloadActions url={link.dl} />
+      <DownloadActions url={url} />
     </div>
   );
 }
 
-function SeasonsView({ groups }: { groups: DownloadGroup[] }) {
+function SeasonsView({ groups }: { groups: DownloadItem[] }) {
   const bySeason = useMemo(() => {
-    const map = new Map<number, DownloadGroup[]>();
+    const map = new Map<number, DownloadItem[]>();
     for (const g of groups) {
-      const arr = map.get(g.season_int) ?? [];
+      const key = g.season_int ?? g.season ?? 0;
+      const arr = map.get(key) ?? [];
       arr.push(g);
-      map.set(g.season_int, arr);
+      map.set(key, arr);
     }
     return [...map.entries()].sort(([a], [b]) => b - a);
   }, [groups]);
@@ -241,9 +260,9 @@ function SeasonBlock({
   groups,
 }: {
   season: number;
-  groups: DownloadGroup[];
+  groups: DownloadItem[];
 }) {
-  const [selectedId, setSelectedId] = useState<string>(groups[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState<number>(groups[0]?.id ?? 0);
   const selected = groups.find((g) => g.id === selectedId) ?? groups[0];
 
   return (
@@ -262,18 +281,23 @@ function SeasonBlock({
               }`}
             >
               {g.quality.trim()}
-              <span className="ml-1 text-muted-foreground">· {g.encoder}</span>
+              {g.encoder && (
+                <span className="ml-1 text-muted-foreground">
+                  · {g.encoder}
+                </span>
+              )}
             </button>
           ))}
         </div>
       </div>
       <div className="text-xs text-muted-foreground">
-        {selected.total_episode} episodes · avg {selected.size}
-        {selected.tags && ` · ${selected.tags}`}
+        {selected.total_episode ?? selected.link.length} episodes · avg{" "}
+        {selected.size}
+        {selected.tags.length > 0 && ` · ${selected.tags.join(" / ")}`}
       </div>
       <div className="divide-y divide-border">
         {[...selected.link]
-          .sort((a, b) => Number(b.episode) - Number(a.episode))
+          .sort((a, b) => b.episode - a.episode)
           .map((l) => (
             <div
               key={l.id}
@@ -281,7 +305,7 @@ function SeasonBlock({
             >
               <div className="flex min-w-0 items-center gap-3">
                 <span className="w-10 shrink-0 font-mono text-sm text-muted-foreground">
-                  E{l.episode.padStart(2, "0")}
+                  E{String(l.episode).padStart(2, "0")}
                 </span>
                 <span className="truncate text-sm" title={l.source}>
                   {l.source || `Episode ${l.episode}`}

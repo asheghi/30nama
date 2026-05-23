@@ -5,7 +5,12 @@ import {
   redirect,
   useNavigate,
 } from "@tanstack/react-router";
-import { getList, type ListResult, type ListOrderBy } from "@30nama/api";
+import {
+  getArchive,
+  type Page,
+  type Title,
+  type ArchiveOrderBy,
+} from "@30nama/api";
 import { createClient, getStoredToken } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { PosterCard } from "@/components/PosterCard";
@@ -45,16 +50,29 @@ const CAT_LABELS: Record<Cat, string> = {
   anime: "Anime",
 };
 
+const ORDER_BY_OPTIONS: { value: ArchiveOrderBy; label: string }[] = [
+  { value: "update", label: "Recently updated" },
+  { value: "year", label: "Year" },
+  { value: "favorite", label: "Most popular" },
+  { value: "imdb-rate", label: "IMDb score" },
+  { value: "30nama-rate", label: "30nama score" },
+  { value: "relevant", label: "Relevant" },
+];
+
 interface CategorySearch {
   page?: number;
   genre?: string;
-  orderBy?: ListOrderBy;
-  order?: "asc" | "desc";
+  orderBy?: ArchiveOrderBy;
+  order?: "ASC" | "DESC";
   streamOnly?: boolean;
 }
 
 function isCat(v: unknown): v is Cat {
   return CATS.includes(v as Cat);
+}
+
+function isOrderBy(v: unknown): v is ArchiveOrderBy {
+  return ORDER_BY_OPTIONS.some((o) => o.value === v);
 }
 
 export const Route = createFileRoute("/category/$cat")({
@@ -71,14 +89,8 @@ export const Route = createFileRoute("/category/$cat")({
     if (typeof raw.genre === "string" && raw.genre && raw.genre !== "all") {
       out.genre = raw.genre;
     }
-    if (
-      raw.orderBy === "id" ||
-      raw.orderBy === "imdb_score" ||
-      raw.orderBy === "30nama_score"
-    ) {
-      out.orderBy = raw.orderBy;
-    }
-    if (raw.order === "asc") out.order = "asc";
+    if (isOrderBy(raw.orderBy)) out.orderBy = raw.orderBy;
+    if (raw.order === "ASC") out.order = "ASC";
     if (raw.streamOnly === true || raw.streamOnly === "true") {
       out.streamOnly = true;
     }
@@ -91,28 +103,22 @@ function CategoryPage() {
   const { cat } = Route.useParams();
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const [data, setData] = useState<ListResult | null>(null);
+  const [data, setData] = useState<Page<Title> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const category = cat as Cat;
   const page = search.page ?? 1;
   const genre = search.genre ?? "all";
-  const orderBy = search.orderBy ?? "date";
-  const order = search.order ?? "desc";
+  const orderBy = search.orderBy ?? "update";
+  const order = search.order ?? "DESC";
   const streamOnly = search.streamOnly ?? false;
 
   useEffect(() => {
     setLoading(true);
     setError(null);
-    getList(createClient(), {
-      category,
-      page,
-      genre,
-      orderBy,
-      order,
-      streamOnly,
-    })
+    const slugs = genre === "all" ? [category] : [category, genre];
+    getArchive(createClient(), slugs, page, streamOnly, orderBy, order)
       .then(setData)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
@@ -163,16 +169,17 @@ function CategoryPage() {
                 value={orderBy}
                 onChange={(e) =>
                   updateSearch({
-                    orderBy: e.target.value as ListOrderBy,
+                    orderBy: e.target.value as ArchiveOrderBy,
                     page: 1,
                   })
                 }
                 className="rounded border border-border bg-background px-2 py-1"
               >
-                <option value="date">Newest</option>
-                <option value="id">Recently added</option>
-                <option value="imdb_score">IMDB score</option>
-                <option value="30nama_score">30nama score</option>
+                {ORDER_BY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
               </select>
             </label>
             <label className="flex items-center gap-2">

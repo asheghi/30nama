@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
-import { getMainV2, type MainV2Result } from "@30nama/api";
-import { createClient, getStoredToken, setStoredToken } from "@/lib/api";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { getHome, type HomeData } from "@30nama/api";
+import { createClient, getStoredToken } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { PosterRow } from "@/components/PosterCard";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -11,7 +11,7 @@ export const Route = createFileRoute("/")({ component: Home });
 function Home() {
   const [token, setToken] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const [data, setData] = useState<MainV2Result | null>(null);
+  const [data, setData] = useState<HomeData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,18 +24,18 @@ function Home() {
     if (!token) return;
     setLoading(true);
     setError(null);
-    getMainV2(createClient(token))
+    getHome(createClient(token))
       .then(setData)
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, [token]);
 
-  // Render nothing until we've actually checked localStorage — otherwise SSR
-  // and the first client render flash <TokenPrompt> before the effect runs.
+  // Render nothing until we've actually checked localStorage — otherwise
+  // SSR and the first client render flash <SignInPrompt> before the effect.
   if (!ready) {
     return <div className="dark min-h-screen bg-background" />;
   }
-  if (!token) return <TokenPrompt onSave={setToken} />;
+  if (!token) return <SignInPrompt />;
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
@@ -55,25 +55,43 @@ function Home() {
         )}
         {data && (
           <>
-            <PosterRow title="Featured" posts={data.hero_section.posts} />
-            <PosterRow title="Top 10" posts={data.top10} />
-            <PosterRow title="New Releases" posts={data.new_releases.posts} />
-            <PosterRow title="Suggested" posts={data.suggested.posts} />
             <PosterRow
-              title="Movies"
-              posts={data.movies.posts}
-              seeMoreCat="movie"
+              title="Featured"
+              posts={data.hero_header.posts}
             />
-            <PosterRow
-              title="Series"
-              posts={data.series.posts}
-              seeMoreCat="series"
-            />
-            <PosterRow
-              title="Anime"
-              posts={data.anime.posts}
-              seeMoreCat="anime"
-            />
+            {data.top_10 && (
+              <PosterRow title="Top 10" posts={data.top_10.posts} />
+            )}
+            {data.new_releases && (
+              <PosterRow
+                title="New Releases"
+                posts={data.new_releases.posts}
+              />
+            )}
+            {data.suggested && (
+              <PosterRow title="Suggested" posts={data.suggested.posts} />
+            )}
+            {data.movies && (
+              <PosterRow
+                title="Movies"
+                posts={data.movies.posts}
+                seeMoreCat="movie"
+              />
+            )}
+            {data.series && (
+              <PosterRow
+                title="Series"
+                posts={data.series.posts}
+                seeMoreCat="series"
+              />
+            )}
+            {data.anime && (
+              <PosterRow
+                title="Anime"
+                posts={data.anime.posts}
+                seeMoreCat="anime"
+              />
+            )}
           </>
         )}
       </main>
@@ -81,33 +99,17 @@ function Home() {
   );
 }
 
-function TokenPrompt({ onSave }: { onSave: (token: string) => void }) {
-  const [value, setValue] = useState("");
+function SignInPrompt() {
   return (
     <div className="dark flex min-h-screen items-center justify-center bg-background text-foreground">
-      <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6">
-        <h1 className="text-xl font-bold">Welcome</h1>
+      <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6 text-center">
+        <h1 className="text-xl font-bold">Welcome to 30nama</h1>
         <p className="text-sm text-muted-foreground">
-          Paste your usertoken to continue. Get it from DevTools after logging
-          in at 30nama.com (POST /api/v1/action/loginV2 → result.usertoken).
+          Sign in by scanning a QR code with the 30nama app on your phone.
+          No password or SMS code required.
         </p>
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => setValue(e.target.value)}
-          placeholder="usertoken"
-          className="w-full rounded border border-input bg-background px-3 py-2 font-mono text-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        />
-        <Button
-          className="w-full"
-          disabled={!value.trim()}
-          onClick={() => {
-            const t = value.trim();
-            setStoredToken(t);
-            onSave(t);
-          }}
-        >
-          Save token
+        <Button asChild className="w-full">
+          <Link to="/login">Sign in</Link>
         </Button>
       </div>
     </div>

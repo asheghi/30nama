@@ -3,11 +3,12 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 export interface Session {
-  usertoken: string;
-  userid?: number;
-  useremail?: string;
-  username?: string;
-  usertype?: string;
+  /** Bearer token used as `c-token` on subsequent requests. */
+  token: string;
+  userId?: number;
+  userEmail?: string;
+  userName?: string;
+  userType?: string;
   savedAt: string;
 }
 
