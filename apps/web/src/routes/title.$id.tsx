@@ -6,6 +6,7 @@ import {
   type TitleDetail,
   type DownloadGroup,
 } from "@30nama/api";
+import { Check, Copy, Download, Play } from "lucide-react";
 import { createClient, getStoredToken } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -203,20 +204,15 @@ function MovieGroupRow({ group }: { group: DownloadGroup }) {
   const link = group.link[0];
   if (!link) return null;
   return (
-    <a
-      href={link.dl}
-      className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3 hover:bg-accent"
-    >
+    <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3 hover:bg-accent/40">
       <div className="min-w-0">
         <div className="font-medium">{group.quality.trim()}</div>
         <div className="text-xs text-muted-foreground">
           {[group.encoder, group.size, group.tags].filter(Boolean).join(" · ")}
         </div>
       </div>
-      <Button size="sm" variant="secondary">
-        Download
-      </Button>
-    </a>
+      <DownloadActions url={link.dl} />
+    </div>
   );
 }
 
@@ -228,7 +224,7 @@ function SeasonsView({ groups }: { groups: DownloadGroup[] }) {
       arr.push(g);
       map.set(g.season_int, arr);
     }
-    return [...map.entries()].sort(([a], [b]) => a - b);
+    return [...map.entries()].sort(([a], [b]) => b - a);
   }, [groups]);
 
   return (
@@ -276,26 +272,76 @@ function SeasonBlock({
         {selected.tags && ` · ${selected.tags}`}
       </div>
       <div className="divide-y divide-border">
-        {selected.link.map((l) => (
-          <a
-            key={l.id}
-            href={l.dl}
-            className="flex items-center justify-between gap-4 py-2 hover:bg-accent/50"
-          >
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="w-10 shrink-0 font-mono text-sm text-muted-foreground">
-                E{l.episode.padStart(2, "0")}
-              </span>
-              <span className="truncate text-sm" title={l.source}>
-                {l.source || `Episode ${l.episode}`}
-              </span>
+        {[...selected.link]
+          .sort((a, b) => Number(b.episode) - Number(a.episode))
+          .map((l) => (
+            <div
+              key={l.id}
+              className="flex items-center justify-between gap-4 py-2 hover:bg-accent/40"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="w-10 shrink-0 font-mono text-sm text-muted-foreground">
+                  E{l.episode.padStart(2, "0")}
+                </span>
+                <span className="truncate text-sm" title={l.source}>
+                  {l.source || `Episode ${l.episode}`}
+                </span>
+              </div>
+              <DownloadActions url={l.dl} />
             </div>
-            <Button size="sm" variant="ghost">
-              Download
-            </Button>
-          </a>
-        ))}
+          ))}
       </div>
+    </div>
+  );
+}
+
+function DownloadActions({ url }: { url: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const onCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard may be unavailable (insecure context, permissions)
+    }
+  };
+
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      <Button
+        asChild
+        size="icon-xs"
+        variant="ghost"
+        title="Open in VLC"
+        aria-label="Open in VLC"
+      >
+        <a href={`vlc://${url}`}>
+          <Play />
+        </a>
+      </Button>
+      <Button
+        size="icon-xs"
+        variant="ghost"
+        onClick={onCopy}
+        title={copied ? "Copied!" : "Copy link"}
+        aria-label="Copy link"
+      >
+        {copied ? <Check /> : <Copy />}
+      </Button>
+      <Button
+        asChild
+        size="sm"
+        variant="secondary"
+        title="Download"
+        aria-label="Download"
+      >
+        <a href={url}>
+          <Download />
+          <span className="hidden sm:inline">Download</span>
+        </a>
+      </Button>
     </div>
   );
 }

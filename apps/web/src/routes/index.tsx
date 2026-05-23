@@ -10,12 +10,14 @@ export const Route = createFileRoute("/")({ component: Home });
 
 function Home() {
   const [token, setToken] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const [data, setData] = useState<MainV2Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     setToken(getStoredToken());
+    setReady(true);
   }, []);
 
   useEffect(() => {
@@ -28,6 +30,11 @@ function Home() {
       .finally(() => setLoading(false));
   }, [token]);
 
+  // Render nothing until we've actually checked localStorage — otherwise SSR
+  // and the first client render flash <TokenPrompt> before the effect runs.
+  if (!ready) {
+    return <div className="dark min-h-screen bg-background" />;
+  }
   if (!token) return <TokenPrompt onSave={setToken} />;
 
   return (
