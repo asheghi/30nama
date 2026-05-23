@@ -55,6 +55,14 @@ ENV PORT=3000
 
 WORKDIR /app
 
+# curl is required by packages/api/src/curlFetch.ts — the hana-api backend is
+# fronted by Cloudflare bot protection that TLS-fingerprints Node's built-in
+# fetch and returns a challenge page. curl's TLS handshake passes; Node's
+# doesn't. Every server-side API call shells out to curl.
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/*
+
 # Run as a non-root user — required by most container security policies and
 # a best practice even where it isn't enforced.
 RUN addgroup --system --gid 1001 nodejs && \
