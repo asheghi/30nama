@@ -4,13 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getSingle,
   getDownload,
-  getStream,
   type Single,
   type Download as DownloadItem,
 } from "@30nama/api";
 import { Check, Copy, Download, Play } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { createClient, createInterfaceClient, getStoredToken } from "@/lib/api";
+import { createClient, getStoredToken } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -63,12 +62,10 @@ function flattenDownloads(
 function TitlePage() {
   const { id } = Route.useParams();
 
-  // Gate authenticated queries on the token being present. Start as false
-  // so server and client agree on the initial render (no hydration mismatch),
-  // then flip to true client-side once we can read localStorage. Without this
-  // guard the queries fire on every SSR render and on unauthenticated visits
-  // (the beforeLoad redirect only runs client-side), get an error from the
-  // API, and permanently suppress the Watch button / downloads.
+  // Downloads carry signed, one-shot URLs (IP- and expiry-bound — see
+  // CLAUDE.md). Gate on isLoggedIn so we don't fire the query on SSR or
+  // unauthenticated visits — without a token downloads always error, and
+  // retry:false would permanently cache the error state.
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   useEffect(() => {
     setIsLoggedIn(!!getStoredToken());
@@ -80,10 +77,6 @@ function TitlePage() {
     staleTime: SINGLE_STALE_TIME,
   });
 
-  // Downloads carry signed, one-shot URLs (IP- and expiry-bound — see
-  // CLAUDE.md). We use `useQuery` for the unified loading/error UI but
-  // disable both staleTime AND gcTime so each visit re-fetches and nothing
-  // ever ends up in the persisted localStorage cache.
   const downloadsQuery = useQuery({
     queryKey: queryKeys.download(id),
     queryFn: () => getDownload(createClient(), id),
@@ -93,30 +86,15 @@ function TitlePage() {
     enabled: isLoggedIn,
   });
 
-  // Stream availability check — same caching rules as download (signed,
-  // short-lived URLs). Only fire when the user is authenticated; without a
-  // token the API always returns "streaming not available", which would
-  // permanently hide the Watch button for this title in the query cache.
-  const streamQuery = useQuery({
-    queryKey: queryKeys.stream(id),
-    queryFn: () => getStream(createInterfaceClient(), id),
-    staleTime: 0,
-    gcTime: 0,
-    retry: false,
-    enabled: isLoggedIn,
-  });
-
   const loading = singleQuery.isLoading;
   const error = singleQuery.error;
 
-  // Combine: detail is required, downloads is best-effort.
+  // `options.stream` from the single endpoint is the authoritative flag —
+  // no separate getStream() call needed just to decide button visibility.
   const detail = singleQuery.data;
   const groups = flattenDownloads(downloadsQuery.data?.download);
   const isSeries = detail?.options.is_series ?? false;
-  const hasStream =
-    !!streamQuery.data &&
-    Object.values(streamQuery.data.list).some((eps) => eps.length > 0);
-  const streamError = streamQuery.isError;
+  const canStream = detail?.options.stream ?? false;
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
@@ -133,9 +111,7 @@ function TitlePage() {
           detail={detail}
           groups={groups}
           isSeries={isSeries}
-          hasStream={hasStream}
-          streamLoading={isLoggedIn && streamQuery.isLoading}
-          streamError={streamError}
+          canStream={canStream}
           titleId={id}
         />
       )}
@@ -147,17 +123,13 @@ function Detail({
   detail,
   groups,
   isSeries,
-  hasStream,
-  streamLoading,
-  streamError,
+  canStream,
   titleId,
 }: {
   detail: Single;
   groups: DownloadItem[];
   isSeries: boolean;
-  hasStream: boolean;
-  streamLoading: boolean;
-  streamError: boolean;
+  canStream: boolean;
   titleId: string;
 }) {
   const cover = detail.image.cover?.webp ?? detail.image.cover?.jpg ?? null;
@@ -244,12 +216,7 @@ function Detail({
               </p>
             )}
 
-            {streamLoading && (
-              <div className="pt-2 text-sm text-muted-foreground">
-                Checking stream availability…
-              </div>
-            )}
-            {!streamLoading && hasStream && (
+            {canStream && (
               <div className="pt-2">
                 <Button asChild size="lg" className="gap-2">
                   <Link to="/play/$id" params={{ id: titleId }}>
@@ -257,11 +224,6 @@ function Detail({
                     Watch
                   </Link>
                 </Button>
-              </div>
-            )}
-            {!streamLoading && !hasStream && streamError && (
-              <div className="pt-2 rounded border border-yellow-700/40 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-300">
-                Streaming not available for this title on your account.
               </div>
             )}
 
