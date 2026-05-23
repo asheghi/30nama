@@ -23,6 +23,18 @@ export interface SingleNewsItem {
   comments: number;
 }
 
+// Cast/crew entries surface on the paginated `/single/id/{id}/page/{p}` form.
+// Shape is best-effort — tighten once a real response is captured.
+export interface CastPerson {
+  id?: number | string;
+  name?: string;
+  persian_name?: string | null;
+  role?: string | null;
+  character?: string | null;
+  image?: string | null;
+  [key: string]: unknown;
+}
+
 export interface TitleDetail {
   id: number;
   title: string;
@@ -73,12 +85,17 @@ export interface TitleDetail {
   news: SingleNewsItem[] | null;
   quotes: unknown | null;
   related_posts: unknown | null;
+  cast?: CastPerson[] | null;
+  crew?: CastPerson[] | null;
   seo: Record<string, unknown>;
 }
 
 export function getSingle(
   client: ApiClient,
   id: string | number,
+  page: number = 1,
 ): Promise<TitleDetail> {
-  return client.post<TitleDetail>(`/action/single/id/${id}`, { jsonBody: {} });
+  return client.post<TitleDetail>(`/action/single/id/${id}/page/${page}`, {
+    jsonBody: {},
+  });
 }

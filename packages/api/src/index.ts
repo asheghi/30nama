@@ -6,3 +6,7 @@ export * from "./endpoints/downloads.ts";
 export * from "./endpoints/main.ts";
 export * from "./endpoints/single.ts";
 export * from "./endpoints/list.ts";
+export * from "./endpoints/search.ts";
+export * from "./endpoints/advanced_search_parameters.ts";
+export * from "./endpoints/user.ts";
+export * from "./endpoints/comment.ts";
