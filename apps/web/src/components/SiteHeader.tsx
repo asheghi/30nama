@@ -1,8 +1,8 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { setStoredToken } from "@/lib/api";
+import { getStoredToken, setStoredToken } from "@/lib/api";
 import { QUERY_CACHE_STORAGE_KEY } from "@/lib/query-client";
 
 const NAV_LINKS: { label: string; cat: "movie" | "series" | "anime" }[] = [
@@ -14,6 +14,10 @@ const NAV_LINKS: { label: string; cat: "movie" | "series" | "anime" }[] = [
 export function SiteHeader({ onSignOut }: { onSignOut?: () => void }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  useEffect(() => {
+    setIsLoggedIn(!!getStoredToken());
+  }, []);
   const currentSearchQ = useRouterState({
     select: (s) => {
       const match = s.matches.find((m) => m.routeId === "/search");
@@ -77,9 +81,11 @@ export function SiteHeader({ onSignOut }: { onSignOut?: () => void }) {
           aria-label="Search"
         />
       </form>
-      <Button variant="ghost" size="sm" onClick={handleSignOut}>
-        Sign out
-      </Button>
+      {isLoggedIn && (
+        <Button variant="ghost" size="sm" onClick={handleSignOut}>
+          Sign out
+        </Button>
+      )}
     </header>
   );
 }

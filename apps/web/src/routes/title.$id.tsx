@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -63,6 +63,17 @@ function flattenDownloads(
 function TitlePage() {
   const { id } = Route.useParams();
 
+  // Gate authenticated queries on the token being present. Start as false
+  // so server and client agree on the initial render (no hydration mismatch),
+  // then flip to true client-side once we can read localStorage. Without this
+  // guard the queries fire on every SSR render and on unauthenticated visits
+  // (the beforeLoad redirect only runs client-side), get an error from the
+  // API, and permanently suppress the Watch button / downloads.
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  useEffect(() => {
+    setIsLoggedIn(!!getStoredToken());
+  }, []);
+
   const singleQuery = useQuery({
     queryKey: queryKeys.single(id),
     queryFn: () => getSingle(createClient(), id),
@@ -79,17 +90,20 @@ function TitlePage() {
     staleTime: 0,
     gcTime: 0,
     retry: false,
+    enabled: isLoggedIn,
   });
 
   // Stream availability check — same caching rules as download (signed,
-  // short-lived URLs). The query result drives whether the Watch button
-  // is rendered; errors silently hide it rather than surfacing.
+  // short-lived URLs). Only fire when the user is authenticated; without a
+  // token the API always returns "streaming not available", which would
+  // permanently hide the Watch button for this title in the query cache.
   const streamQuery = useQuery({
     queryKey: queryKeys.stream(id),
     queryFn: () => getStream(createInterfaceClient(), id),
     staleTime: 0,
     gcTime: 0,
     retry: false,
+    enabled: isLoggedIn,
   });
 
   const loading = singleQuery.isLoading;
@@ -102,6 +116,7 @@ function TitlePage() {
   const hasStream =
     !!streamQuery.data &&
     Object.values(streamQuery.data.list).some((eps) => eps.length > 0);
+  const streamError = streamQuery.isError;
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
@@ -119,6 +134,8 @@ function TitlePage() {
           groups={groups}
           isSeries={isSeries}
           hasStream={hasStream}
+          streamLoading={isLoggedIn && streamQuery.isLoading}
+          streamError={streamError}
           titleId={id}
         />
       )}
@@ -131,12 +148,16 @@ function Detail({
   groups,
   isSeries,
   hasStream,
+  streamLoading,
+  streamError,
   titleId,
 }: {
   detail: Single;
   groups: DownloadItem[];
   isSeries: boolean;
   hasStream: boolean;
+  streamLoading: boolean;
+  streamError: boolean;
   titleId: string;
 }) {
   const cover = detail.image.cover?.webp ?? detail.image.cover?.jpg ?? null;
@@ -223,7 +244,12 @@ function Detail({
               </p>
             )}
 
-            {hasStream && (
+            {streamLoading && (
+              <div className="pt-2 text-sm text-muted-foreground">
+                Checking stream availability…
+              </div>
+            )}
+            {!streamLoading && hasStream && (
               <div className="pt-2">
                 <Button asChild size="lg" className="gap-2">
                   <Link to="/play/$id" params={{ id: titleId }}>
@@ -231,6 +257,11 @@ function Detail({
                     Watch
                   </Link>
                 </Button>
+              </div>
+            )}
+            {!streamLoading && !hasStream && streamError && (
+              <div className="pt-2 rounded border border-yellow-700/40 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-300">
+                Streaming not available for this title on your account.
               </div>
             )}
 
