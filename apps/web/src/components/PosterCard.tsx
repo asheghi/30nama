@@ -7,41 +7,36 @@ export function PosterCard({ post }: { post: Title }) {
     post.image.poster.jpg?.medium ||
     post.image.poster.preview;
 
-  const score = post.score?.["30nama"]?.score ?? 0;
-  const isSeries = post.options.is_series;
-  const seriesBadge = isSeries ? "Series" : "Movie";
   const displayTitle = post.title.english || post.title.local || "";
+  const year = post.info?.year;
 
   return (
     <Link
       to="/title/$id"
       params={{ id: String(post.id) }}
-      className="group block overflow-hidden rounded-md bg-card transition-transform hover:scale-[1.03] focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="group block focus:outline-none"
     >
-      <div className="relative aspect-[2/3] bg-muted">
+      <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-white/[0.04] ring-1 ring-white/5 transition-all duration-300 group-hover:ring-white/30 group-hover:shadow-[0_20px_50px_-12px_rgba(0,0,0,0.9)] group-focus-visible:ring-2 group-focus-visible:ring-white">
         <img
           src={poster}
           alt={displayTitle}
           loading="lazy"
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.05]"
         />
-        {score > 0 && (
-          <div className="absolute top-2 right-2 rounded bg-black/70 px-1.5 py-0.5 text-xs font-medium text-white">
-            {score.toFixed(1)}
+        {/* Bottom-aligned dark gradient — ensures the in-card title stays
+            readable over bright artwork without darkening the whole image. */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black via-black/75 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 p-3">
+          <div
+            className="line-clamp-2 text-[13px] font-semibold leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]"
+            title={displayTitle}
+          >
+            {displayTitle}
           </div>
-        )}
-      </div>
-      <div className="p-2">
-        <div className="truncate text-sm font-medium" title={displayTitle}>
-          {displayTitle}
-        </div>
-        <div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span>{seriesBadge}</span>
-          {post.genre[0] && (
-            <>
-              <span>·</span>
-              <span className="truncate">{post.genre[0].slug}</span>
-            </>
+          {year && (
+            <div className="mt-1 text-[11px] font-medium text-white/70">
+              {year}
+            </div>
           )}
         </div>
       </div>
@@ -49,26 +44,19 @@ export function PosterCard({ post }: { post: Title }) {
   );
 }
 
-/**
- * Pulse-animated placeholder that matches PosterCard's 2:3 aspect ratio
- * and two-line caption block. Drop into the same grid container as the
- * real cards for loading states.
- */
 export function PosterCardSkeleton() {
   return (
-    <div
-      aria-hidden
-      className="block overflow-hidden rounded-md bg-card animate-pulse"
-    >
-      <div className="aspect-[2/3] bg-muted" />
-      <div className="space-y-1.5 p-2">
-        <div className="h-3.5 w-3/4 rounded bg-muted" />
-        <div className="h-3 w-1/2 rounded bg-muted" />
-      </div>
+    <div aria-hidden className="block animate-pulse">
+      <div className="aspect-[2/3] rounded-xl bg-white/[0.04]" />
     </div>
   );
 }
 
+/**
+ * Horizontal-scroll rail of posters. AppleTV+ style: invisible scrollbar,
+ * snap-to-start, fixed card width that lets cards bleed off the right edge
+ * to hint at more content.
+ */
 export function PosterRow({
   title,
   posts,
@@ -81,23 +69,32 @@ export function PosterRow({
   if (!posts.length) return null;
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="mx-auto flex max-w-[1600px] items-end justify-between px-6 lg:px-10">
+        <h2 className="text-[15px] font-semibold tracking-tight text-white/90">
+          {title}
+        </h2>
         {seeMoreCat && (
           <Link
             to="/category/$cat"
             params={{ cat: seeMoreCat }}
             search={{}}
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className="text-[12px] text-white/50 transition-colors hover:text-white"
           >
-            See all →
+            See all
           </Link>
         )}
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-        {posts.map((p) => (
-          <PosterCard key={`${title}-${p.id}`} post={p} />
-        ))}
+      <div className="no-scrollbar overflow-x-auto">
+        <div className="mx-auto flex max-w-[1600px] gap-5 px-6 pb-2 lg:gap-6 lg:px-10">
+          {posts.map((p) => (
+            <div
+              key={`${title}-${p.id}`}
+              className="w-[180px] shrink-0 snap-start sm:w-[200px] lg:w-[230px]"
+            >
+              <PosterCard post={p} />
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

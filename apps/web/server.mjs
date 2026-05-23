@@ -42,3 +42,32 @@ const server = createServer(async (req, res) => {
 server.listen(port, () => {
   console.log(`30nama web listening on http://0.0.0.0:${port}`)
 })
+
+// ─── Graceful shutdown ────────────────────────────────────────────────────────
+// When the container runtime sends SIGTERM (docker stop, K8s rolling update,
+// Fly/Render/ECS scale-in) we stop accepting new connections and wait for
+// in-flight requests to finish before exiting. The 10-second timeout matches
+// most orchestrators' default termination grace period.
+
+function shutdown (signal) {
+  console.log(`Received ${signal} — shutting down gracefully`)
+
+  server.close(err => {
+    if (err) {
+      console.error('Error during shutdown:', err)
+      process.exit(1)
+    }
+    console.log('All connections closed — exiting')
+    process.exit(0)
+  })
+
+  // Hard-exit if requests don't drain within the grace period so the
+  // orchestrator isn't left waiting indefinitely.
+  setTimeout(() => {
+    console.error('Graceful shutdown timed out — forcing exit')
+    process.exit(1)
+  }, 10_000).unref()
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT',  () => shutdown('SIGINT'))

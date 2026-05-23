@@ -90,12 +90,26 @@ function LoginPage() {
   };
 
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
-      <main className="mx-auto flex max-w-md flex-col items-center gap-6 px-6 py-16">
-        <h1 className="text-2xl font-bold">Sign in to Potato+</h1>
+    <div className="dark relative min-h-screen overflow-hidden bg-background text-foreground">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-30"
+        style={{
+          background:
+            "radial-gradient(60% 50% at 50% 20%, rgba(120,120,255,0.18), transparent 70%), radial-gradient(50% 40% at 80% 90%, rgba(255,80,80,0.12), transparent 70%)",
+        }}
+      />
+      <main className="relative mx-auto flex max-w-md flex-col items-center gap-7 px-6 py-20">
+        <div className="space-y-2 text-center">
+          <h1 className="text-3xl font-bold tracking-tight">
+            Sign in to Potato<span className="text-white/60">+</span>
+          </h1>
+          <p className="text-[14px] text-white/60">
+            Scan the QR code with the 30nama app on your phone.
+          </p>
+        </div>
 
         {codeQuery.isLoading && (
-          <p className="text-muted-foreground">Loading…</p>
+          <p className="text-white/50">Loading…</p>
         )}
 
         {codeQuery.error && !codeQuery.isLoading && (
@@ -105,42 +119,49 @@ function LoginPage() {
                 ? codeQuery.error.message
                 : "Failed to fetch QR code"}
             </p>
-            <Button onClick={requestNewCode}>Retry</Button>
+            <Button
+              onClick={requestNewCode}
+              className="h-11 rounded-full bg-white px-6 text-[14px] font-semibold text-black hover:bg-white/90"
+            >
+              Retry
+            </Button>
           </>
         )}
 
         {code && !expired && !success && (
           <>
-            <p className="text-center text-sm text-muted-foreground">
-              Open this URL on your phone where you&apos;re already signed in
-              to 30nama, or scan the QR with the camera app.
-            </p>
-            <div className="rounded-lg bg-white p-4">
+            <div className="rounded-2xl bg-white p-5 shadow-2xl ring-1 ring-white/10">
               <QRCode value={code.url} size={224} />
             </div>
             <a
               href={code.url}
               target="_blank"
               rel="noreferrer"
-              className="break-all text-center text-sm text-primary underline"
+              className="break-all text-center text-[12px] text-white/40 underline-offset-2 hover:text-white/70 hover:underline"
             >
               {code.url}
             </a>
-            <p className="text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-[13px] text-white/50">
+              <span className="size-1.5 animate-pulse rounded-full bg-white/60" />
               Waiting for confirmation…
-            </p>
+            </div>
           </>
         )}
 
         {expired && !success && (
           <>
-            <p>The code expired. Get a fresh one.</p>
-            <Button onClick={requestNewCode}>Get a new code</Button>
+            <p className="text-white/70">The code expired.</p>
+            <Button
+              onClick={requestNewCode}
+              className="h-11 rounded-full bg-white px-6 text-[14px] font-semibold text-black hover:bg-white/90"
+            >
+              Get a new code
+            </Button>
           </>
         )}
 
         {success && (
-          <p className="text-green-500">Signed in. Redirecting…</p>
+          <p className="text-green-400">Signed in. Redirecting…</p>
         )}
       </main>
     </div>

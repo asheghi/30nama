@@ -23,7 +23,6 @@ export const Route = createFileRoute("/title/$id")({
     }
   },
   loader: async ({ params, context }) => {
-    // Only prefetch `single` — `download` carries signed URLs we never cache.
     const token = getStoredToken();
     if (!token) return;
     await context.queryClient.prefetchQuery({
@@ -38,9 +37,8 @@ export const Route = createFileRoute("/title/$id")({
 /**
  * Flattens the API's `download` payload (either an array or a grouped map)
  * and dedupes by `id`. The grouped form is keyed by season label, so a
- * single download group that spans multiple seasons (e.g. "all episodes"
- * packs) can appear under more than one key — without deduping we'd emit
- * duplicate React keys further down the tree.
+ * single download group that spans multiple seasons can appear under more
+ * than one key — without deduping we'd emit duplicate React keys.
  */
 function flattenDownloads(
   download: Record<string, DownloadItem[]> | DownloadItem[] | undefined,
@@ -62,10 +60,6 @@ function flattenDownloads(
 function TitlePage() {
   const { id } = Route.useParams();
 
-  // Downloads carry signed, one-shot URLs (IP- and expiry-bound — see
-  // CLAUDE.md). Gate on isLoggedIn so we don't fire the query on SSR or
-  // unauthenticated visits — without a token downloads always error, and
-  // retry:false would permanently cache the error state.
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   useEffect(() => {
     setIsLoggedIn(!!getStoredToken());
@@ -89,8 +83,6 @@ function TitlePage() {
   const loading = singleQuery.isLoading;
   const error = singleQuery.error;
 
-  // `options.stream` from the single endpoint is the authoritative flag —
-  // no separate getStream() call needed just to decide button visibility.
   const detail = singleQuery.data;
   const groups = flattenDownloads(downloadsQuery.data?.download);
   const isSeries = detail?.options.is_series ?? false;
@@ -100,9 +92,13 @@ function TitlePage() {
     <div className="dark min-h-screen bg-background text-foreground">
       <SiteHeader />
 
-      {loading && <div className="p-8 text-muted-foreground">Loading…</div>}
+      {loading && (
+        <div className="flex h-[60vh] items-center justify-center text-muted-foreground">
+          Loading…
+        </div>
+      )}
       {error && (
-        <div className="m-6 rounded border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+        <div className="mx-auto mt-10 max-w-2xl rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
           {error.message}
         </div>
       )}
@@ -147,94 +143,116 @@ function Detail({
 
   return (
     <>
-      <div className="relative h-[40vh] min-h-[280px] w-full overflow-hidden bg-muted">
-        {cover && (
+      {/* Cinematic hero. Pulled up under the (transparent at top) header
+          and faded into the page so the metadata block reads as part of
+          the artwork. */}
+      <section className="relative -mt-14 h-[85vh] min-h-[560px] w-full overflow-hidden">
+        {cover ? (
           <img
             src={cover}
             alt=""
-            className="h-full w-full object-cover opacity-60"
+            className="absolute inset-0 h-full w-full object-cover"
           />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-      </div>
-
-      <main className="mx-auto -mt-32 max-w-5xl px-6 pb-16">
-        <div className="flex flex-col gap-6 sm:flex-row">
+        ) : (
           <img
             src={poster}
-            alt={displayTitle}
-            className="aspect-[2/3] w-40 shrink-0 rounded-lg border border-border object-cover shadow-xl sm:w-48"
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover blur-2xl scale-110 opacity-60"
           />
-          <div className="flex-1 space-y-3">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/20 to-transparent" />
+
+        <div className="relative z-10 mx-auto flex h-full max-w-[1600px] flex-col justify-end px-6 pb-14 lg:px-10 lg:pb-20">
+          <div className="grid gap-8 sm:grid-cols-[180px_1fr] sm:items-end lg:grid-cols-[220px_1fr]">
+            <img
+              src={poster}
+              alt={displayTitle}
+              className="hidden aspect-[2/3] w-[180px] rounded-xl object-cover shadow-2xl ring-1 ring-white/10 sm:block lg:w-[220px]"
+            />
+            <div className="max-w-2xl space-y-4">
+              <div className="flex items-center gap-3 text-[12px] font-medium uppercase tracking-[0.18em] text-white/70">
+                <span>{isSeries ? "Series" : "Movie"}</span>
+                <span className="text-white/30">·</span>
+                <span>
+                  {year}
+                  {yearEnd ? `–${yearEnd}` : ""}
+                </span>
+                {minutes && (
+                  <>
+                    <span className="text-white/30">·</span>
+                    <span>{minutes} min</span>
+                  </>
+                )}
+              </div>
+              <h1 className="text-4xl font-bold tracking-tight text-white drop-shadow-lg sm:text-5xl lg:text-6xl">
                 {displayTitle}
               </h1>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {year}
-                {yearEnd ? `–${yearEnd}` : ""}
-                {minutes ? ` · ${minutes} min` : ""}
-                {isSeries ? " · Series" : " · Movie"}
-              </p>
-            </div>
 
-            <div className="flex flex-wrap gap-2">
-              {detail.genre.map((g) => (
-                <span
-                  key={g.slug}
-                  className="rounded-full border border-border bg-secondary px-3 py-0.5 text-xs"
-                >
-                  {g.slug}
-                </span>
-              ))}
-            </div>
-
-            <div className="flex gap-6 text-sm">
-              {imdb && (
-                <span>
-                  <span className="text-muted-foreground">IMDB </span>
-                  <span className="font-semibold">{imdb.score}</span>
-                  {imdb.votes > 0 && (
-                    <span className="text-muted-foreground">
-                      {" "}
-                      ({imdb.votes.toLocaleString()})
+              <div className="flex flex-wrap items-center gap-4 text-[13px] text-white/70">
+                {imdb && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="rounded bg-yellow-400/90 px-1.5 py-0.5 text-[10px] font-bold text-black">
+                      IMDb
                     </span>
-                  )}
-                </span>
+                    <span className="font-medium text-white">
+                      {imdb.score}
+                    </span>
+                    {imdb.votes > 0 && (
+                      <span className="text-white/50">
+                        ({imdb.votes.toLocaleString()})
+                      </span>
+                    )}
+                  </span>
+                )}
+                {localScore !== undefined && localScore > 0 && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="rounded bg-white/15 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      30nama
+                    </span>
+                    <span className="font-medium text-white">{localScore}</span>
+                  </span>
+                )}
+                {detail.genre.length > 0 && (
+                  <span className="text-white/60">
+                    {detail.genre
+                      .slice(0, 4)
+                      .map((g) => g.slug)
+                      .join(" · ")}
+                  </span>
+                )}
+              </div>
+
+              {detail.plot.english && (
+                <p className="line-clamp-4 max-w-xl text-[15px] leading-relaxed text-white/80">
+                  {detail.plot.english}
+                </p>
               )}
-              {localScore !== undefined && localScore > 0 && (
-                <span>
-                  <span className="text-muted-foreground">30nama </span>
-                  <span className="font-semibold">{localScore}</span>
-                </span>
-              )}
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                {canStream && (
+                  <Button
+                    asChild
+                    className="h-11 gap-2 rounded-full bg-white px-6 text-[14px] font-semibold text-black hover:bg-white/90"
+                  >
+                    <Link to="/play/$id" params={{ id: titleId }}>
+                      <Play className="size-4 fill-black" />
+                      Play
+                    </Link>
+                  </Button>
+                )}
+                {detail.options.coming_soon && (
+                  <div className="rounded-full border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-[13px] font-medium text-yellow-300">
+                    Coming soon
+                  </div>
+                )}
+              </div>
             </div>
-
-            {detail.plot.english && (
-              <p className="text-sm leading-relaxed text-foreground/90">
-                {detail.plot.english}
-              </p>
-            )}
-
-            {canStream && (
-              <div className="pt-2">
-                <Button asChild size="lg" className="gap-2">
-                  <Link to="/play/$id" params={{ id: titleId }}>
-                    <Play className="size-4" />
-                    Watch
-                  </Link>
-                </Button>
-              </div>
-            )}
-
-            {detail.options.coming_soon && (
-              <div className="rounded border border-yellow-700/40 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-300">
-                Coming soon — no downloads available yet.
-              </div>
-            )}
           </div>
         </div>
+      </section>
 
+      <main className="mx-auto max-w-[1600px] px-6 pb-20 lg:px-10">
         <DownloadsSection groups={groups} isSeries={isSeries} />
       </main>
     </>
@@ -250,9 +268,9 @@ function DownloadsSection({
 }) {
   if (groups.length === 0) {
     return (
-      <section className="mt-10">
-        <h2 className="text-xl font-semibold">Downloads</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
+      <section className="mt-12">
+        <h2 className="text-[20px] font-semibold tracking-tight">Downloads</h2>
+        <p className="mt-2 text-[14px] text-white/50">
           No downloads available.
         </p>
       </section>
@@ -261,8 +279,8 @@ function DownloadsSection({
 
   if (!isSeries) {
     return (
-      <section className="mt-10 space-y-3">
-        <h2 className="text-xl font-semibold">Downloads</h2>
+      <section className="mt-12 space-y-4">
+        <h2 className="text-[20px] font-semibold tracking-tight">Downloads</h2>
         <div className="space-y-2">
           {groups.map((g) => (
             <MovieGroupRow key={g.id} group={g} />
@@ -273,26 +291,22 @@ function DownloadsSection({
   }
 
   return (
-    <section className="mt-10 space-y-6">
-      <h2 className="text-xl font-semibold">Episodes</h2>
+    <section className="mt-12 space-y-6">
+      <h2 className="text-[20px] font-semibold tracking-tight">Episodes</h2>
       <SeasonsView groups={groups} />
     </section>
   );
 }
 
 function MovieGroupRow({ group }: { group: DownloadItem }) {
-  // `link` is declared as a required `DownloadLink[]` in the type, but the
-  // API sometimes omits it entirely on movie groups — the URL lives in
-  // `group.dl` for those. Guard the array access so a missing `link` field
-  // doesn't blow up the whole title page.
   const link = group.link?.[0];
   const url = link?.dl ?? group.dl;
   if (!url) return null;
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card p-3 hover:bg-accent/40">
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-white/5 bg-white/[0.03] p-4 transition-colors hover:bg-white/[0.06]">
       <div className="min-w-0">
-        <div className="font-medium">{group.quality.trim()}</div>
-        <div className="text-xs text-muted-foreground">
+        <div className="text-[14px] font-medium">{group.quality.trim()}</div>
+        <div className="text-[12px] text-white/50">
           {[group.encoder, group.size, group.tags.join(" / ")]
             .filter(Boolean)
             .join(" · ")}
@@ -335,48 +349,48 @@ function SeasonBlock({
   const selected = groups.find((g) => g.id === selectedId) ?? groups[0];
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+    <div className="space-y-4 rounded-2xl border border-white/5 bg-white/[0.02] p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className="text-lg font-semibold">Season {season}</h3>
-        <div className="flex flex-wrap gap-1">
+        <h3 className="text-[18px] font-semibold tracking-tight">
+          Season {season}
+        </h3>
+        <div className="flex flex-wrap gap-1.5">
           {groups.map((g) => (
             <button
               key={g.id}
               onClick={() => setSelectedId(g.id)}
-              className={`rounded border px-2.5 py-1 text-xs transition-colors ${
+              className={`rounded-full px-3 py-1 text-[12px] font-medium transition-colors ${
                 g.id === selected.id
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border hover:bg-accent"
+                  ? "bg-white text-black"
+                  : "border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
               }`}
             >
               {g.quality.trim()}
               {g.encoder && (
-                <span className="ml-1 text-muted-foreground">
-                  · {g.encoder}
-                </span>
+                <span className="ml-1 opacity-60">· {g.encoder}</span>
               )}
             </button>
           ))}
         </div>
       </div>
-      <div className="text-xs text-muted-foreground">
+      <div className="text-[12px] text-white/50">
         {selected.total_episode ?? selected.link?.length ?? 0} episodes · avg{" "}
         {selected.size}
         {selected.tags.length > 0 && ` · ${selected.tags.join(" / ")}`}
       </div>
-      <div className="divide-y divide-border">
+      <div className="divide-y divide-white/5">
         {[...(selected.link ?? [])]
           .sort((a, b) => b.episode - a.episode)
           .map((l) => (
             <div
               key={l.id}
-              className="flex items-center justify-between gap-4 py-2 hover:bg-accent/40"
+              className="flex items-center justify-between gap-4 py-3 transition-colors hover:bg-white/[0.03]"
             >
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="w-10 shrink-0 font-mono text-sm text-muted-foreground">
+              <div className="flex min-w-0 items-center gap-4">
+                <span className="w-10 shrink-0 font-mono text-[13px] text-white/40">
                   E{String(l.episode).padStart(2, "0")}
                 </span>
-                <span className="truncate text-sm" title={l.source}>
+                <span className="truncate text-[14px]" title={l.source}>
                   {l.source || `Episode ${l.episode}`}
                 </span>
               </div>
@@ -405,8 +419,9 @@ function DownloadActions({ url }: { url: string }) {
     <div className="flex shrink-0 items-center gap-1">
       <Button
         asChild
-        size="icon-xs"
+        size="icon-sm"
         variant="ghost"
+        className="rounded-full text-white/70 hover:bg-white/10 hover:text-white"
         title="Open in VLC"
         aria-label="Open in VLC"
       >
@@ -415,9 +430,10 @@ function DownloadActions({ url }: { url: string }) {
         </a>
       </Button>
       <Button
-        size="icon-xs"
+        size="icon-sm"
         variant="ghost"
         onClick={onCopy}
+        className="rounded-full text-white/70 hover:bg-white/10 hover:text-white"
         title={copied ? "Copied!" : "Copy link"}
         aria-label="Copy link"
       >
@@ -426,7 +442,7 @@ function DownloadActions({ url }: { url: string }) {
       <Button
         asChild
         size="sm"
-        variant="secondary"
+        className="ml-1 h-8 gap-1.5 rounded-full bg-white px-3 text-[12px] font-semibold text-black hover:bg-white/90"
         title="Download"
         aria-label="Download"
       >

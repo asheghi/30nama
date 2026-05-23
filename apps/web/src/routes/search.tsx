@@ -162,62 +162,41 @@ function SearchPage() {
     <div className="dark min-h-screen bg-background text-foreground">
       <SiteHeader />
 
-      <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <h1 className="text-3xl font-bold tracking-tight">
+      <main className="mx-auto max-w-[1600px] space-y-8 px-6 pb-20 pt-10 lg:px-10">
+        <div className="space-y-5">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
             Search
             {q && (
-              <span className="ml-2 text-base font-normal text-muted-foreground">
-                · {q}
+              <span className="ml-3 text-2xl font-normal text-white/50">
+                {q}
               </span>
             )}
           </h1>
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <label className="flex items-center gap-2">
-              <span className="text-muted-foreground">Type</span>
-              <select
-                value={type}
-                onChange={(e) =>
-                  updateSearch({ type: e.target.value as FullSearchType })
-                }
-                className="rounded border border-border bg-background px-2 py-1"
-              >
-                {TYPE_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="text-muted-foreground">Sort</span>
-              <select
-                value={orderBy}
-                onChange={(e) =>
-                  updateSearch({ orderBy: e.target.value as FullSearchOrderBy })
-                }
-                className="rounded border border-border bg-background px-2 py-1"
-              >
-                {ORDER_BY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="text-muted-foreground">Order</span>
-              <select
-                value={order}
-                onChange={(e) =>
-                  updateSearch({ order: e.target.value as FullSearchOrder })
-                }
-                className="rounded border border-border bg-background px-2 py-1"
-              >
-                <option value="desc">Descending</option>
-                <option value="asc">Ascending</option>
-              </select>
-            </label>
+          <div className="flex flex-wrap items-center gap-2.5 text-[13px]">
+            <FilterChip
+              value={type}
+              onChange={(v) =>
+                updateSearch({ type: v as FullSearchType })
+              }
+              options={TYPE_OPTIONS}
+            />
+            <FilterChip
+              value={orderBy}
+              onChange={(v) =>
+                updateSearch({ orderBy: v as FullSearchOrderBy })
+              }
+              options={ORDER_BY_OPTIONS}
+            />
+            <FilterChip
+              value={order}
+              onChange={(v) =>
+                updateSearch({ order: v as FullSearchOrder })
+              }
+              options={[
+                { value: "desc", label: "Descending" },
+                { value: "asc", label: "Ascending" },
+              ]}
+            />
           </div>
         </div>
 
@@ -250,7 +229,7 @@ function SearchPage() {
                 No loaded results match this filter — keep scrolling for more.
               </p>
             ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-5 xl:grid-cols-6">
                 {displayed.map((p) => (
                   <PosterCard key={p.id} post={p} />
                 ))}
@@ -280,9 +259,47 @@ function SearchPage() {
   );
 }
 
+function FilterChip({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none rounded-full border border-white/10 bg-white/5 px-4 py-1.5 pr-9 text-[13px] font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:border-white/30 focus:outline-none"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value} className="bg-black">
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <svg
+        className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-white/50"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        aria-hidden
+      >
+        <path
+          fillRule="evenodd"
+          d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.24 4.38a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </div>
+  );
+}
+
 function PosterSkeletonGrid({ count }: { count: number }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-5 xl:grid-cols-6">
       {Array.from({ length: count }).map((_, i) => (
         <PosterCardSkeleton key={i} />
       ))}

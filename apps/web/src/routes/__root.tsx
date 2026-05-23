@@ -40,11 +40,11 @@ export const Route = createRootRouteWithContext<RouterContext>()({
 
 function RootDocument({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" style={{ backgroundColor: "#000", colorScheme: "dark" }}>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="dark bg-background text-foreground">
         {children}
         <TanStackDevtools
           config={{

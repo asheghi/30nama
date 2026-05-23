@@ -173,76 +173,62 @@ function CategoryPage() {
     <div className="dark min-h-screen bg-background text-foreground">
       <SiteHeader />
 
-      <main className="mx-auto max-w-7xl space-y-6 px-6 py-8">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <h1 className="text-3xl font-bold tracking-tight">
+      <main className="mx-auto max-w-[1600px] space-y-8 px-6 pb-20 pt-10 lg:px-10">
+        <div className="space-y-5">
+          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
             {CAT_LABELS[category]}
             {genre !== "all" && (
-              <span className="ml-2 text-base font-normal text-muted-foreground">
-                · {genre}
+              <span className="ml-3 text-2xl font-normal text-white/50">
+                {genre}
               </span>
             )}
           </h1>
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <label className="flex items-center gap-2">
-              <span className="text-muted-foreground">Genre</span>
-              <select
-                value={genre}
-                onChange={(e) =>
-                  updateSearch({ genre: e.target.value, page: 1 })
-                }
-                className="rounded border border-border bg-background px-2 py-1"
-              >
-                {GENRES.map((g) => (
-                  <option key={g} value={g}>
-                    {g}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
-              <span className="text-muted-foreground">Sort</span>
-              <select
-                value={orderBy}
-                onChange={(e) =>
-                  updateSearch({
-                    orderBy: e.target.value as ArchiveOrderBy,
-                    page: 1,
-                  })
-                }
-                className="rounded border border-border bg-background px-2 py-1"
-              >
-                {ORDER_BY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={streamOnly}
-                onChange={(e) =>
-                  updateSearch({ streamOnly: e.target.checked, page: 1 })
-                }
-              />
-              <span>Stream only</span>
-            </label>
+          <div className="flex flex-wrap items-center gap-2.5 text-[13px]">
+            <FilterSelect
+              value={orderBy}
+              onChange={(v) =>
+                updateSearch({ orderBy: v as ArchiveOrderBy, page: 1 })
+              }
+              options={ORDER_BY_OPTIONS.map((o) => ({
+                value: o.value,
+                label: o.label,
+              }))}
+            />
+            <FilterSelect
+              value={genre}
+              onChange={(v) => updateSearch({ genre: v, page: 1 })}
+              options={GENRES.map((g) => ({
+                value: g,
+                label: g === "all" ? "All genres" : g,
+              }))}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                updateSearch({ streamOnly: !streamOnly, page: 1 })
+              }
+              className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors ${
+                streamOnly
+                  ? "bg-white text-black"
+                  : "border border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              Stream only
+            </button>
           </div>
         </div>
 
         {isLoading && !data && (
-          <p className="text-muted-foreground">Loading…</p>
+          <p className="text-white/50">Loading…</p>
         )}
         {error && (
-          <div className="rounded border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
             {error.message}
           </div>
         )}
         {data && (
           <>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 lg:gap-5 xl:grid-cols-6">
               {data.posts.map((p) => (
                 <PosterCard key={p.id} post={p} />
               ))}
@@ -259,6 +245,44 @@ function CategoryPage() {
   );
 }
 
+function FilterSelect({
+  value,
+  onChange,
+  options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="appearance-none rounded-full border border-white/10 bg-white/5 px-4 py-1.5 pr-9 text-[13px] font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white focus:border-white/30 focus:outline-none"
+      >
+        {options.map((o) => (
+          <option key={o.value} value={o.value} className="bg-black">
+            {o.label}
+          </option>
+        ))}
+      </select>
+      <svg
+        className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-white/50"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        aria-hidden
+      >
+        <path
+          fillRule="evenodd"
+          d="M5.23 7.21a.75.75 0 011.06.02L10 11.06l3.71-3.83a.75.75 0 111.08 1.04l-4.24 4.38a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </div>
+  );
+}
+
 function Pagination({
   page,
   pages,
@@ -270,23 +294,23 @@ function Pagination({
 }) {
   if (pages <= 1) return null;
   return (
-    <div className="flex items-center justify-center gap-3 py-6">
+    <div className="flex items-center justify-center gap-4 py-8">
       <Button
-        variant="outline"
         size="sm"
         disabled={page <= 1}
         onClick={() => onChange(page - 1)}
+        className="h-9 rounded-full border border-white/10 bg-white/5 px-5 text-[13px] font-medium text-white/80 hover:bg-white/10 hover:text-white disabled:opacity-30"
       >
         Previous
       </Button>
-      <span className="text-sm text-muted-foreground">
+      <span className="text-[13px] text-white/50">
         Page {page} of {pages}
       </span>
       <Button
-        variant="outline"
         size="sm"
         disabled={page >= pages}
         onClick={() => onChange(page + 1)}
+        className="h-9 rounded-full border border-white/10 bg-white/5 px-5 text-[13px] font-medium text-white/80 hover:bg-white/10 hover:text-white disabled:opacity-30"
       >
         Next
       </Button>
