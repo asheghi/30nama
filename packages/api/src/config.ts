@@ -30,6 +30,19 @@ export const PLATFORM_KEYS: Record<Platform, string> = {
 export const HANA_API_WORLD = "https://world.hana-api.com/api/v2";
 export const HANA_API_IR = "https://ir.kazem-api.com/api/v2";
 
+// The website's own backend (interface.30nama.com) exposes a few actions
+// that hana-api doesn't — most notably `full_search`, which is the only
+// keyword-search action that also accepts type/orderby/order filters.
+// Used by the search route via a second server-side proxy.
+export const INTERFACE_API = "https://interface.30nama.com/api/v1";
+export const INTERFACE_APP_VERSION = "2.0.0";
+export const INTERFACE_PLATFORM = "Website";
+// The website ships a different `c-api-key` than the SDK's WEBSITE
+// platform key — same "not a secret, in the public JS bundle" character,
+// but interface.30nama.com only accepts this one.
+export const INTERFACE_API_KEY =
+  "YygufGCvFgYR3g9sjD92Ct5ZSx7SJs4JXpuCeTS24nWAszaL4u3qCDZRULpejmzF";
+
 // Authoritative endpoint list, fetched at runtime by the official SDK so
 // hosts can be rotated without shipping a new client. Hardcoded WORLD/IR
 // above are the current (2026-05) values used as a fallback.

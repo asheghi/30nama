@@ -49,6 +49,26 @@ export function PosterCard({ post }: { post: Title }) {
   );
 }
 
+/**
+ * Pulse-animated placeholder that matches PosterCard's 2:3 aspect ratio
+ * and two-line caption block. Drop into the same grid container as the
+ * real cards for loading states.
+ */
+export function PosterCardSkeleton() {
+  return (
+    <div
+      aria-hidden
+      className="block overflow-hidden rounded-md bg-card animate-pulse"
+    >
+      <div className="aspect-[2/3] bg-muted" />
+      <div className="space-y-1.5 p-2">
+        <div className="h-3.5 w-3/4 rounded bg-muted" />
+        <div className="h-3 w-1/2 rounded bg-muted" />
+      </div>
+    </div>
+  );
+}
+
 export function PosterRow({
   title,
   posts,

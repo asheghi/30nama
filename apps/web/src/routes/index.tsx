@@ -117,7 +117,7 @@ function SignInPrompt() {
   return (
     <div className="dark flex min-h-screen items-center justify-center bg-background text-foreground">
       <div className="w-full max-w-md space-y-4 rounded-lg border border-border bg-card p-6 text-center">
-        <h1 className="text-xl font-bold">Welcome to 30nama</h1>
+        <h1 className="text-xl font-bold">Welcome to Potato+</h1>
         <p className="text-sm text-muted-foreground">
           Sign in by scanning a QR code with the 30nama app on your phone.
           No password or SMS code required.

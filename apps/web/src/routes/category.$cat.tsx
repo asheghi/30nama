@@ -165,7 +165,7 @@ function CategoryPage() {
     navigate({
       to: "/category/$cat",
       params: { cat: category },
-      search: (prev: CategorySearch) => ({ ...prev, ...patch }),
+      search: { ...search, ...patch },
     });
   };
 

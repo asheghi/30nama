@@ -92,7 +92,7 @@ function LoginPage() {
   return (
     <div className="dark min-h-screen bg-background text-foreground">
       <main className="mx-auto flex max-w-md flex-col items-center gap-6 px-6 py-16">
-        <h1 className="text-2xl font-bold">Sign in to 30nama</h1>
+        <h1 className="text-2xl font-bold">Sign in to Potato+</h1>
 
         {codeQuery.isLoading && (
           <p className="text-muted-foreground">Loading…</p>

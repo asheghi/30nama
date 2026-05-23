@@ -4,6 +4,10 @@ import {
   DEFAULT_USER_AGENT,
   DEFAULT_VERSION_NUMBER,
   HANA_API_WORLD,
+  INTERFACE_API,
+  INTERFACE_API_KEY,
+  INTERFACE_APP_VERSION,
+  INTERFACE_PLATFORM,
   PLATFORM_KEYS,
   SDK_ENDPOINT_JSON,
   type Platform,
@@ -106,6 +110,76 @@ export function createDirectTransport(
       } catch {
         throw new ApiError(
           `Non-JSON response from action/${action} (HTTP ${res.status})`,
+          res.status,
+          res.body.slice(0, 500),
+        );
+      }
+    },
+  };
+}
+
+export interface InterfaceDirectTransportOptions {
+  baseUrl?: string;
+  apiKey?: string;
+  appVersion?: string;
+  platform?: string;
+  userAgent?: string;
+}
+
+/**
+ * Direct transport for `interface.30nama.com` — the website's own backend.
+ * Lives alongside the hana-api transport because the two services expose
+ * different actions: hana-api has `single`/`download`/etc, interface has
+ * `full_search` (the only keyword-search action that respects type/orderby
+ * filters). Same response envelope shape; different headers + base URL.
+ *
+ * The action string passed to `call` becomes the URL path verbatim, so
+ * path-segment style actions ("full_search/type/all/orderby/year/order/desc/page/1")
+ * just work — that's how interface.30nama.com expresses query params.
+ */
+export function createInterfaceDirectTransport(
+  opts: InterfaceDirectTransportOptions = {},
+): ApiTransport {
+  const baseUrl = opts.baseUrl ?? INTERFACE_API;
+  const apiKey = opts.apiKey ?? INTERFACE_API_KEY;
+  const appVersion = opts.appVersion ?? INTERFACE_APP_VERSION;
+  const platform = opts.platform ?? INTERFACE_PLATFORM;
+  const userAgent = opts.userAgent ?? DEFAULT_USER_AGENT;
+
+  return {
+    async call<T>(
+      action: string,
+      body: ActionBody,
+      { token, signal }: { token?: string | null; signal?: AbortSignal },
+    ): Promise<ApiEnvelope<T>> {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "c-api-key": apiKey,
+        "c-app-version": appVersion,
+        "c-platform": platform,
+        "c-useragent": userAgent,
+        "user-agent": userAgent,
+      };
+      if (token) headers["c-token"] = token;
+
+      const form = new URLSearchParams();
+      for (const [k, v] of Object.entries(body)) {
+        if (v !== undefined && v !== null) form.append(k, String(v));
+      }
+
+      const { curlPost } = await import("./curlFetch.ts");
+      const res = await curlPost({
+        url: `${baseUrl}/action/${action}`,
+        headers,
+        body: form.toString(),
+        signal,
+      });
+
+      try {
+        return JSON.parse(res.body) as ApiEnvelope<T>;
+      } catch {
+        throw new ApiError(
+          `Non-JSON response from interface action/${action} (HTTP ${res.status})`,
           res.status,
           res.body.slice(0, 500),
         );

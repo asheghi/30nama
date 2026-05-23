@@ -35,8 +35,10 @@ export const queryKeys = {
       order,
       streamOnly,
     ] as const,
-  search: (query: string, page: number) =>
-    ["search", query, page] as const,
+  // Type/sort/order are applied client-side over the accumulated pages,
+  // so the query key intentionally only varies on `query`. The infinite
+  // query manages page state internally — changing q resets the stack.
+  search: (query: string) => ["search", query] as const,
   user: () => ["user"] as const,
   qrLoginCode: () => ["qrLoginCode"] as const,
 };

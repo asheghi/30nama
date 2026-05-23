@@ -1,4 +1,5 @@
-import { Link } from "@tanstack/react-router";
+import { useState, type FormEvent } from "react";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { setStoredToken } from "@/lib/api";
@@ -12,6 +13,22 @@ const NAV_LINKS: { label: string; cat: "movie" | "series" | "anime" }[] = [
 
 export function SiteHeader({ onSignOut }: { onSignOut?: () => void }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const currentSearchQ = useRouterState({
+    select: (s) => {
+      const match = s.matches.find((m) => m.routeId === "/search");
+      const sp = match?.search as { q?: string } | undefined;
+      return sp?.q ?? "";
+    },
+  });
+  const [query, setQuery] = useState(currentSearchQ);
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+    navigate({ to: "/search", search: { q } });
+  };
 
   const handleSignOut = () => {
     setStoredToken(null);
@@ -29,7 +46,7 @@ export function SiteHeader({ onSignOut }: { onSignOut?: () => void }) {
     <header className="sticky top-0 z-20 flex items-center justify-between gap-6 border-b border-border bg-background/80 px-6 py-3 backdrop-blur">
       <div className="flex items-center gap-6">
         <Link to="/" className="text-xl font-bold tracking-tight">
-          30nama
+          Potato+
         </Link>
         <nav className="flex items-center gap-1 text-sm">
           {NAV_LINKS.map((n) => (
@@ -46,6 +63,20 @@ export function SiteHeader({ onSignOut }: { onSignOut?: () => void }) {
           ))}
         </nav>
       </div>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-1 max-w-sm items-center gap-2"
+        role="search"
+      >
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search titles…"
+          className="w-full rounded border border-border bg-background px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:border-ring focus:outline-none"
+          aria-label="Search"
+        />
+      </form>
       <Button variant="ghost" size="sm" onClick={handleSignOut}>
         Sign out
       </Button>

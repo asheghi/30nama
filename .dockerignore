@@ -1,0 +1,13 @@
+**/.git
+**/.gitignore
+**/node_modules
+**/.output
+**/.tanstack
+**/.turbo
+**/dist
+**/*.log
+.claude
+.playwright-mcp
+plans
+details-page.html
+apps/cli

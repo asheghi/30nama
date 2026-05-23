@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TitleIdRouteImport } from './routes/title.$id'
 import { Route as CategoryCatRouteImport } from './routes/category.$cat'
 
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -38,12 +44,14 @@ const CategoryCatRoute = CategoryCatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/search': typeof SearchRoute
   '/category/$cat': typeof CategoryCatRoute
   '/title/$id': typeof TitleIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/search': typeof SearchRoute
   '/category/$cat': typeof CategoryCatRoute
   '/title/$id': typeof TitleIdRoute
 }
@@ -51,26 +59,35 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/search': typeof SearchRoute
   '/category/$cat': typeof CategoryCatRoute
   '/title/$id': typeof TitleIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/category/$cat' | '/title/$id'
+  fullPaths: '/' | '/login' | '/search' | '/category/$cat' | '/title/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/category/$cat' | '/title/$id'
-  id: '__root__' | '/' | '/login' | '/category/$cat' | '/title/$id'
+  to: '/' | '/login' | '/search' | '/category/$cat' | '/title/$id'
+  id: '__root__' | '/' | '/login' | '/search' | '/category/$cat' | '/title/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LoginRoute: typeof LoginRoute
+  SearchRoute: typeof SearchRoute
   CategoryCatRoute: typeof CategoryCatRoute
   TitleIdRoute: typeof TitleIdRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -105,6 +122,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LoginRoute: LoginRoute,
+  SearchRoute: SearchRoute,
   CategoryCatRoute: CategoryCatRoute,
   TitleIdRoute: TitleIdRoute,
 }

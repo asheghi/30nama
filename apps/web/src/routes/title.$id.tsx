@@ -34,13 +34,28 @@ export const Route = createFileRoute("/title/$id")({
   component: TitlePage,
 });
 
-/** Flattens the API's `download` payload (either an array or a grouped map). */
+/**
+ * Flattens the API's `download` payload (either an array or a grouped map)
+ * and dedupes by `id`. The grouped form is keyed by season label, so a
+ * single download group that spans multiple seasons (e.g. "all episodes"
+ * packs) can appear under more than one key — without deduping we'd emit
+ * duplicate React keys further down the tree.
+ */
 function flattenDownloads(
   download: Record<string, DownloadItem[]> | DownloadItem[] | undefined,
 ): DownloadItem[] {
   if (!download) return [];
-  if (Array.isArray(download)) return download;
-  return Object.values(download).flat();
+  const raw = Array.isArray(download)
+    ? download
+    : Object.values(download).flat();
+  const seen = new Set<number>();
+  const out: DownloadItem[] = [];
+  for (const g of raw) {
+    if (seen.has(g.id)) continue;
+    seen.add(g.id);
+    out.push(g);
+  }
+  return out;
 }
 
 function TitlePage() {
@@ -234,7 +249,11 @@ function DownloadsSection({
 }
 
 function MovieGroupRow({ group }: { group: DownloadItem }) {
-  const link = group.link[0];
+  // `link` is declared as a required `DownloadLink[]` in the type, but the
+  // API sometimes omits it entirely on movie groups — the URL lives in
+  // `group.dl` for those. Guard the array access so a missing `link` field
+  // doesn't blow up the whole title page.
+  const link = group.link?.[0];
   const url = link?.dl ?? group.dl;
   if (!url) return null;
   return (
@@ -309,12 +328,12 @@ function SeasonBlock({
         </div>
       </div>
       <div className="text-xs text-muted-foreground">
-        {selected.total_episode ?? selected.link.length} episodes · avg{" "}
+        {selected.total_episode ?? selected.link?.length ?? 0} episodes · avg{" "}
         {selected.size}
         {selected.tags.length > 0 && ` · ${selected.tags.join(" / ")}`}
       </div>
       <div className="divide-y divide-border">
-        {[...selected.link]
+        {[...(selected.link ?? [])]
           .sort((a, b) => b.episode - a.episode)
           .map((l) => (
             <div

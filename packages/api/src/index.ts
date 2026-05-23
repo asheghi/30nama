@@ -1,6 +1,10 @@
 export {
   HANA_API_WORLD,
   HANA_API_IR,
+  INTERFACE_API,
+  INTERFACE_API_KEY,
+  INTERFACE_APP_VERSION,
+  INTERFACE_PLATFORM,
   PLATFORM_KEYS,
   SDK_ENDPOINT_JSON,
   DEFAULT_PLATFORM,
@@ -17,8 +21,10 @@ export {
   type ActionBody,
   type ClientOptions,
   type DirectTransportOptions,
+  type InterfaceDirectTransportOptions,
   type RpcTransportOptions,
   createDirectTransport,
+  createInterfaceDirectTransport,
   createRpcTransport,
   discoverEndpoints,
 } from "./client.ts";
