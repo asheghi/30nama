@@ -7,7 +7,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { getStream, type StreamEpisode } from "@30nama/api";
 import { ArrowLeft } from "lucide-react";
-import { createClient, getStoredToken } from "@/lib/api";
+import { createInterfaceClient, getStoredToken } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { HlsPlayer } from "@/components/HlsPlayer";
 import { cn } from "@/lib/utils";
@@ -45,7 +45,7 @@ function PlayPage() {
 
   const streamQuery = useQuery({
     queryKey: queryKeys.stream(id),
-    queryFn: () => getStream(createClient(), id),
+    queryFn: () => getStream(createInterfaceClient(), id),
     staleTime: 0,
     gcTime: 0,
     retry: false,

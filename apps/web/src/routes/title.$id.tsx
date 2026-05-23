@@ -10,7 +10,7 @@ import {
 } from "@30nama/api";
 import { Check, Copy, Download, Play } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { createClient, getStoredToken } from "@/lib/api";
+import { createClient, createInterfaceClient, getStoredToken } from "@/lib/api";
 import { queryKeys } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -86,7 +86,7 @@ function TitlePage() {
   // is rendered; errors silently hide it rather than surfacing.
   const streamQuery = useQuery({
     queryKey: queryKeys.stream(id),
-    queryFn: () => getStream(createClient(), id),
+    queryFn: () => getStream(createInterfaceClient(), id),
     staleTime: 0,
     gcTime: 0,
     retry: false,
