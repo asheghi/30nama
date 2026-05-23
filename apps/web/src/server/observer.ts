@@ -1,11 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import {
-  curlPost,
   DEFAULT_USER_AGENT,
   INTERFACE_API_KEY,
   INTERFACE_APP_VERSION,
   INTERFACE_PLATFORM,
 } from "@30nama/api";
+import { curlPost } from "@30nama/api/server";
 
 // `/observer/observer` lives on interface.30nama.com but is NOT under
 // `/api/v1/action/...` like the other interface endpoints — it's a separate

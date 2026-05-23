@@ -36,7 +36,6 @@ export * from "./endpoints/home.ts";
 export * from "./endpoints/single.ts";
 export * from "./endpoints/download.ts";
 export * from "./endpoints/stream.ts";
-export { curlPost, CurlError, type CurlPostOptions, type CurlResponse } from "./curlFetch.ts";
 export * from "./endpoints/archive.ts";
 export * from "./endpoints/search.ts";
 export { extractId } from "./util.ts";
