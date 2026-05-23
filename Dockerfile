@@ -60,7 +60,7 @@ WORKDIR /app
 # fetch and returns a challenge page. curl's TLS handshake passes; Node's
 # doesn't. Every server-side API call shells out to curl.
 RUN apt-get update -qq && \
-    apt-get install -y --no-install-recommends curl && \
+    apt-get install -y --no-install-recommends curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # Run as a non-root user — required by most container security policies and
