@@ -23,8 +23,13 @@ pnpm install                              # install everything; turbo + builds r
 pnpm cli -- login                         # interactive Playwright login (CLI)
 pnpm cli -- downloads <urlOrId>           # print direct .mkv URLs
 pnpm --filter @30nama/web dev             # web dev server (default port 3000)
+pnpm --filter @30nama/web build           # production build → apps/web/dist/
 pnpm --filter @30nama/web typecheck       # tsc --noEmit for the web app
 pnpm typecheck                            # turbo: typecheck every workspace
+
+# Docker (build context must be repo root)
+docker build -t 30nama-web .
+docker run -p 3000:3000 30nama-web
 ```
 
 There's no shared test runner yet. The web app inherits `vitest` from the TanStack scaffold but has no tests.
@@ -51,7 +56,7 @@ The `c-api-key` value is not a secret — it's embedded in 30nama's public JS bu
 
 ### Login is captcha-gated
 
-`/action/loginV2` requires a Google reCAPTCHA response, which can't be solved headlessly. The CLI handles this by launching a real Chromium window (`apps/cli/src/login-browser.ts`), letting the human sign in, intercepting the `loginV2` POST response, extracting `result.usertoken`, and closing the window. The web app has no login UI yet — first-load shows a paste-the-token prompt; long-term either it gets a similar flow or it embeds a reCAPTCHA component.
+`/action/loginV2` requires a Google reCAPTCHA response, which can't be solved headlessly. The CLI handles this by launching a real Chromium window (`apps/cli/src/login-browser.ts`), letting the human sign in, intercepting the `loginV2` POST response, extracting `result.usertoken`, and closing the window. The web app login (`/login` route) uses a QR code flow via the hana-api SDK — it generates a QR, polls for completion, then stores the token.
 
 ### Download URLs
 
@@ -69,6 +74,31 @@ The `dl` field in a download response is a one-shot URL signed with the user's I
 
 `stream_watched` (continue-watching) is captured but not wired up yet.
 
+### Branding
+
+The web app is branded **Potato+** (a joke Apple TV+ parody) in all user-visible UI strings. The underlying package names, localStorage keys, API score keys, and everything in `packages/api` all stay as `30nama` — only the UI text is rebranded. Don't change internal identifiers to match the joke name.
+
+Files with UI brand strings: `__root.tsx` (title), `SiteHeader.tsx` (logo), `routes/index.tsx` (welcome), `routes/login.tsx` (sign-in heading), `public/manifest.json`.
+
+### Production build output (TanStack Start + Vite)
+
+`pnpm --filter @30nama/web build` writes to `apps/web/dist/`:
+- `dist/client/` — static assets (JS, CSS, public files)
+- `dist/server/server.js` — SSR bundle; exports `{ fetch }` (Web Fetch API handler, **not** a standalone HTTP server)
+
+`dist/server/server.js` has only four bare npm imports: `react`, `react/jsx-runtime`, `@tanstack/react-router`, and `@tanstack/react-router/ssr/server`. Everything else — including `@30nama/api` — is bundled inline.
+
+`apps/web/server.mjs` is a thin `node:http` adapter (zero extra deps) that bridges Node's IncomingMessage/ServerResponse to the Web Fetch handler. Run with `node apps/web/server.mjs` (reads `PORT` env, defaults 3000).
+
+### Docker
+
+`Dockerfile` at the repo root. Three stages:
+1. **deps** — `pnpm install --frozen-lockfile` with BuildKit cache mount
+2. **builder** — builds `@30nama/api` then `@30nama/web`; runs `pnpm deploy --filter @30nama/web --prod --legacy /standalone` to create a symlink-free production `node_modules`, then copies `dist/` and `server.mjs` into `/standalone`
+3. **runner** — `node:22-slim`, copies `/standalone`, runs `node server.mjs`
+
+`pnpm deploy` requires `--legacy` under pnpm v10 (otherwise errors with `ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE`). The build context must be the repo root because `packages/api` is a workspace dep.
+
 ### Web routing (TanStack Start)
 
 File-based routing in `apps/web/src/routes/`:
@@ -76,6 +106,8 @@ File-based routing in `apps/web/src/routes/`:
 - `index.tsx` — `/` (home, calls mainV2)
 - `title.$id.tsx` — `/title/$id` (single + downloads)
 - `category.$cat.tsx` — `/category/movie|series|anime` (list, with search params for genre/page/sort)
+- `search.tsx` — `/search` (full-text search via interface.30nama.com's `full_search` endpoint)
+- `login.tsx` — `/login` (QR code login flow)
 
 Search params for the category route are validated with `validateSearch` returning a `Partial<>` shape. This is deliberate: if it returned a fully-required type, every `<Link to="/category/$cat">` would have to pass all five params. Inside the component, fall back to defaults via `??` when reading them.
 
