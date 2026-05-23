@@ -82,9 +82,18 @@ export function createDirectTransport(
     ): Promise<ApiEnvelope<T>> {
       const headers: Record<string, string> = {
         "Content-Type": "application/x-www-form-urlencoded",
+        // Standard browser headers — Cloudflare's managed bot detection
+        // checks these alongside the TLS fingerprint.
+        "Accept": "application/json, text/plain, */*",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Origin": "https://30nama.com",
+        "Referer": "https://30nama.com/",
+        // hana-api c-* headers
         "c-api-key": apiKey,
         "c-version-number": versionNumber,
+        "c-platform": platform,
         "c-language": language,
+        "c-useragent": userAgent,
         "user-agent": userAgent,
       };
       if (token) headers["c-token"] = token;

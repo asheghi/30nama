@@ -40,6 +40,9 @@ export function curlPost(opts: CurlPostOptions): Promise<CurlResponse> {
     "--silent",
     "--show-error",
     "--compressed",
+    // Force HTTP/2 — Cloudflare's TLS fingerprinter expects it from browsers.
+    // Falls back to HTTP/1.1 silently if the server doesn't support it.
+    "--http2",
     "--max-time",
     String(timeoutSecs),
     "--request",
