@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   getSingle,
   getDownload,
@@ -8,8 +9,11 @@ import {
 } from "@30nama/api";
 import { Check, Copy, Download, Play } from "lucide-react";
 import { createClient, getStoredToken } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/SiteHeader";
+
+const SINGLE_STALE_TIME = 60 * 60 * 1000; // 1h, persisted
 
 export const Route = createFileRoute("/title/$id")({
   beforeLoad: () => {
@@ -17,14 +21,18 @@ export const Route = createFileRoute("/title/$id")({
       throw redirect({ to: "/" });
     }
   },
+  loader: async ({ params, context }) => {
+    // Only prefetch `single` — `download` carries signed URLs we never cache.
+    const token = getStoredToken();
+    if (!token) return;
+    await context.queryClient.prefetchQuery({
+      queryKey: queryKeys.single(params.id),
+      queryFn: () => getSingle(createClient(token), params.id),
+      staleTime: SINGLE_STALE_TIME,
+    });
+  },
   component: TitlePage,
 });
-
-interface TitleData {
-  detail: Single;
-  groups: DownloadItem[];
-  isSeries: boolean;
-}
 
 /** Flattens the API's `download` payload (either an array or a grouped map). */
 function flattenDownloads(
@@ -37,29 +45,32 @@ function flattenDownloads(
 
 function TitlePage() {
   const { id } = Route.useParams();
-  const [data, setData] = useState<TitleData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    setData(null);
-    const client = createClient();
-    Promise.all([
-      getSingle(client, id),
-      getDownload(client, id).catch(() => null),
-    ])
-      .then(([detail, downloads]) => {
-        setData({
-          detail,
-          groups: flattenDownloads(downloads?.download),
-          isSeries: detail.options.is_series,
-        });
-      })
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [id]);
+  const singleQuery = useQuery({
+    queryKey: queryKeys.single(id),
+    queryFn: () => getSingle(createClient(), id),
+    staleTime: SINGLE_STALE_TIME,
+  });
+
+  // Downloads carry signed, one-shot URLs (IP- and expiry-bound — see
+  // CLAUDE.md). We use `useQuery` for the unified loading/error UI but
+  // disable both staleTime AND gcTime so each visit re-fetches and nothing
+  // ever ends up in the persisted localStorage cache.
+  const downloadsQuery = useQuery({
+    queryKey: queryKeys.download(id),
+    queryFn: () => getDownload(createClient(), id),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  });
+
+  const loading = singleQuery.isLoading;
+  const error = singleQuery.error;
+
+  // Combine: detail is required, downloads is best-effort.
+  const detail = singleQuery.data;
+  const groups = flattenDownloads(downloadsQuery.data?.download);
+  const isSeries = detail?.options.is_series ?? false;
 
   return (
     <div className="dark min-h-screen bg-background text-foreground">
@@ -68,16 +79,23 @@ function TitlePage() {
       {loading && <div className="p-8 text-muted-foreground">Loading…</div>}
       {error && (
         <div className="m-6 rounded border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          {error}
+          {error.message}
         </div>
       )}
-      {data && <Detail data={data} />}
+      {detail && <Detail detail={detail} groups={groups} isSeries={isSeries} />}
     </div>
   );
 }
 
-function Detail({ data }: { data: TitleData }) {
-  const { detail, groups, isSeries } = data;
+function Detail({
+  detail,
+  groups,
+  isSeries,
+}: {
+  detail: Single;
+  groups: DownloadItem[];
+  isSeries: boolean;
+}) {
   const cover = detail.image.cover?.webp ?? detail.image.cover?.jpg ?? null;
   const poster =
     detail.image.poster.webp?.big ||

@@ -1,23 +1,25 @@
-import { useEffect, useState } from "react";
 import {
   createFileRoute,
   notFound,
   redirect,
   useNavigate,
 } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   getArchive,
-  type Page,
-  type Title,
   type ArchiveOrderBy,
+  type ArchiveOrder,
 } from "@30nama/api";
 import { createClient, getStoredToken } from "@/lib/api";
+import { queryKeys } from "@/lib/query-keys";
 import { Button } from "@/components/ui/button";
 import { PosterCard } from "@/components/PosterCard";
 import { SiteHeader } from "@/components/SiteHeader";
 
 const CATS = ["movie", "series", "anime"] as const;
 type Cat = (typeof CATS)[number];
+
+const ARCHIVE_STALE_TIME = 30 * 1000; // 30s, not persisted
 
 const GENRES = [
   "all",
@@ -75,6 +77,23 @@ function isOrderBy(v: unknown): v is ArchiveOrderBy {
   return ORDER_BY_OPTIONS.some((o) => o.value === v);
 }
 
+function archiveQueryArgs(
+  cat: Cat,
+  genre: string,
+  page: number,
+  streamOnly: boolean,
+  orderBy: ArchiveOrderBy,
+  order: ArchiveOrder,
+) {
+  const slugs = genre === "all" ? [cat] : [cat, genre];
+  return {
+    queryKey: queryKeys.archive(cat, genre, page, orderBy, order, streamOnly),
+    queryFn: () =>
+      getArchive(createClient(), slugs, page, streamOnly, orderBy, order),
+    staleTime: ARCHIVE_STALE_TIME,
+  };
+}
+
 export const Route = createFileRoute("/category/$cat")({
   beforeLoad: ({ params }) => {
     if (!isCat(params.cat)) throw notFound();
@@ -96,6 +115,28 @@ export const Route = createFileRoute("/category/$cat")({
     }
     return out;
   },
+  loaderDeps: ({ search }) => ({
+    page: search.page ?? 1,
+    genre: search.genre ?? "all",
+    orderBy: search.orderBy ?? "update",
+    order: search.order ?? "DESC",
+    streamOnly: search.streamOnly ?? false,
+  }),
+  loader: async ({ params, deps, context }) => {
+    const token = getStoredToken();
+    if (!token) return;
+    if (!isCat(params.cat)) return;
+    await context.queryClient.prefetchQuery(
+      archiveQueryArgs(
+        params.cat,
+        deps.genre,
+        deps.page,
+        deps.streamOnly,
+        deps.orderBy,
+        deps.order,
+      ),
+    );
+  },
   component: CategoryPage,
 });
 
@@ -103,9 +144,6 @@ function CategoryPage() {
   const { cat } = Route.useParams();
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const [data, setData] = useState<Page<Title> | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
 
   const category = cat as Cat;
   const page = search.page ?? 1;
@@ -114,15 +152,14 @@ function CategoryPage() {
   const order = search.order ?? "DESC";
   const streamOnly = search.streamOnly ?? false;
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    const slugs = genre === "all" ? [category] : [category, genre];
-    getArchive(createClient(), slugs, page, streamOnly, orderBy, order)
-      .then(setData)
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
-  }, [category, page, genre, orderBy, order, streamOnly]);
+  const query = useQuery({
+    ...archiveQueryArgs(category, genre, page, streamOnly, orderBy, order),
+    // Keep the previous page's posters on screen while the new page loads —
+    // pagination feels less jarring this way.
+    placeholderData: (prev) => prev,
+  });
+
+  const { data, error, isLoading } = query;
 
   const updateSearch = (patch: CategorySearch) => {
     navigate({
@@ -195,12 +232,12 @@ function CategoryPage() {
           </div>
         </div>
 
-        {loading && !data && (
+        {isLoading && !data && (
           <p className="text-muted-foreground">Loading…</p>
         )}
         {error && (
           <div className="rounded border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-            {error}
+            {error.message}
           </div>
         )}
         {data && (
