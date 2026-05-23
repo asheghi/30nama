@@ -1,6 +1,6 @@
 # Player route — Apple TV+-style HLS streaming
 
-**Status:** in-progress
+**Status:** done (merged into main)
 **Created:** 2026-05-23
 **Worktree:** /home/bahman/github/30nama/.claude/worktrees/agent-af679b660547018f2 (branch: worktree-agent-af679b660547018f2)
 **Integration target:** main
@@ -35,7 +35,7 @@ Add `/play/$id` route backed by `POST /action/stream/id/{id}`. Series get a full
 - [x] T7 — Create `apps/web/src/routes/play.$id.tsx` route: auth-guard, fetch stream, render player + (series) episode picker.
 - [x] T8 — Show Watch button on `title.$id.tsx` only when stream list is non-empty (prefetch stream in loader, or check after fetch).
 - [x] T9 — Gate: `pnpm typecheck` clean.
-- [ ] T10 — Commit on worktree branch, merge into main.
+- [x] T10 — Commit on worktree branch, merge into main.
 
 ## Decisions
 
